@@ -85,7 +85,9 @@ deduction_insurance_single = min(total_insurance_expenses, 1700)
 deduction_insurance_married = min(total_insurance_expenses, 3500 / 2)
  #### different deductible for cantonal tax in SG. Right now ignoring this 
 
-
+###Final deductions. Still working on this, therefore ignored rigth now
+deduction_total_cantonal = 4000
+deduction_total_federal = 4000 
 
 print(f'''Overview:
       Total Pillar 1 Deductions: CHF {social_deductions_total}
@@ -95,10 +97,40 @@ print(f'''Overview:
       Deduction insurance single:
       ''')
 
+########################
+# Calculating net income
+
+income_net = income_gross - (deduction_total_cantonal + deduction_total_federal)
+
+######################
+# Calculating tax
+
+###import datasets as csv
+
+#federal income tax
+tax_rates_federal = pd.read_csv('2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+
+tax_rates_federal.columns = tax_rates_federal.iloc[0] #selecting row that will hold column titles
+tax_rates_federal = tax_rates_federal.rename(columns={
+    "Type of tax": "tax_type",
+    "Taxable entity": "taxable_entity",
+    "Tax authority": "tax_authority",
+    "Taxable income for federal tax": "net_income",
+    "Additional %": "additional_%",
+    "Base amount CHF": "base_amount_CHF"
+}) #renaming column titles
+
+tax_rates_federal = tax_rates_federal[1:] #delete old titles
+tax_rates_federal = tax_rates_federal.loc[:, tax_rates_federal.columns.notna()] #delete empty columns
+tax_rates_federal = tax_rates_federal.drop(columns=["Canton ID", "Canton"]) #delete irrelevant columns
+tax_rates_federal["net_income"] = tax_rates_federal["net_income"].str.replace("'", "").astype(float) #deleting "'" in the net income column and converting to float 
+tax_rates_federal["base_amount_CHF"] = tax_rates_federal["base_amount_CHF"].str.replace("'", "").astype(float) #deleting "'" in the base_amount_CHF column and converting to float 
 
 
+#tax_rates_federal[]
 
-optional_deduction_categories = []
+print(tax_rates_federal.head(100))
+
 
 
 
