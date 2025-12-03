@@ -172,6 +172,8 @@ tax_multiplicators_cantonal_municipal = pd.read_csv('2025_estv_tax_multipliers_s
 header_row = tax_multiplicators_cantonal_municipal.iloc[3] #select future header row and save it seperately
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # remove header & first rows from set
 tax_multiplicators_cantonal_municipal.columns = header_row # properly assign header 
+tax_multiplicators_cantonal_municipal.columns.values[4] = "canton_multiplier" #adding "multiplier" for easier understanding  
+tax_multiplicators_cantonal_municipal.columns.values[5] = "commune_multiplier" #adding "multiplier" for easier understanding  
 
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[:, 1:9]   # select relevant column range
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.drop(columns={'SFO Commune ID'}) #dropping irrelevant column 
@@ -183,7 +185,7 @@ tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_
 communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
 print(communes)
 
-#print(tax_multiplicators_cantonal_municipal.head(10))
+print(tax_multiplicators_cantonal_municipal.head(10))
 
 ######################################
 # Calculation federal tax
@@ -264,29 +266,35 @@ print(f'base_income_tax_cantonal: {base_income_tax_cantonal}')
 
 
 ######################################
-# Calculation municipality tax
+# Calculation municipality church tax
 ######################################
 
-def calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_cantonal_tax, canton, commune, church_affiliation):
+def calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_income_tax_cantonal, commune, church_affiliation):
     
     df = tax_multiplicators_cantonal_municipal
     
     # filtering commune
     row = df[(df["commune"] == commune)].iloc[0]
 
-    canton_mult = float(row["canton"]) / 100.0
-    commune_mult = float(row["commune"]) / 100.0
+    # getting multipliers canton and commune
+    canton_multiplier = row["canton_multiplier"] / 100.0
+    commune_multiplier = row["commune_multiplier"] / 100.0
 
-    total_tax = base_cantonal_tax * (canton_mult + commune_mult)
-
+    # adding church tax muliplier if there is an affiliation 
     if church_affiliation is not None:
         col_map = {
             "protestant": "church_protestant",
             "roman_catholic": "church_roman_catholic",
-            "christian_catholic": "church_christian_catholic",
+            "christian_catholic": "church_christian_catholic"
         }
         col = col_map[church_affiliation]
-        church_mult = float(row[col]) / 100.0
-        total_tax += base_cantonal_tax * church_mult
+        church_multiplier = row[col] / 100.0
+    else:
+        church_multiplier = 0 
 
-    return float(total_tax)
+    canton_municipal_church_tax = base_income_tax_cantonal * (canton_multiplier + commune_multiplier + church_multiplier)
+    return canton_municipal_church_tax
+
+canton_municipal_church_tax = calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_income_tax_cantonal, commune, church_affiliation)
+print(f'canton_municipal_church_tax: {canton_municipal_church_tax}')
+
