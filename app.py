@@ -233,11 +233,6 @@ def calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_
     return income_tax_federal
 
 
-income_tax_federal = calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net)
-print(f'income_tax_federal: {income_tax_federal}')
-
-
-
 ######################################
 # Calculation cantonal base tax
 ######################################
@@ -259,11 +254,6 @@ def calculation_income_tax_base_SG(tax_rates_cantonal, income_net):
         remaining_income_net -= taxable_amount_in_band
 
     return float(base_income_tax_cantonal)
-
-base_income_tax_cantonal = calculation_income_tax_base_SG(tax_rates_cantonal, income_net)
-print(f'base_income_tax_cantonal: {base_income_tax_cantonal}')
-
-
 
 ######################################
 # Calculation municipality church tax
@@ -292,9 +282,30 @@ def calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_munici
     else:
         church_multiplier = 0 
 
-    canton_municipal_church_tax = base_income_tax_cantonal * (canton_multiplier + commune_multiplier + church_multiplier)
-    return canton_municipal_church_tax
+    income_tax_canton = base_income_tax_cantonal * canton_multiplier
+    income_tax_commune = base_income_tax_cantonal * commune_multiplier
+    income_tax_church = base_income_tax_cantonal * church_multiplier
+    total_income_tax_canton_municipal_church = base_income_tax_cantonal * (canton_multiplier + commune_multiplier + church_multiplier)
+    data_income_tax_canton_municipal_church = (total_income_tax_canton_municipal_church, income_tax_canton, income_tax_commune, income_tax_church)
+    
+    return data_income_tax_canton_municipal_church
 
-canton_municipal_church_tax = calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_income_tax_cantonal, commune, church_affiliation)
-print(f'canton_municipal_church_tax: {canton_municipal_church_tax}')
+"""
+######################################
+# Calculation total income tax
+######################################
+def calculation_total_income_tax():
+    income_tax_federal = calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net)
+    base_income_tax_cantonal = calculation_income_tax_base_SG(tax_rates_cantonal, income_net)
+    canton_municipal_church_tax = calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_income_tax_cantonal, commune, church_affiliation)
 
+    total_income_tax = income_tax_federal + 
+    return 
+
+total_income_tax = calculation_total_income_tax()
+print(total_income_tax)
+
+
+print(f'income_tax_federal: {income_tax_federal}')
+print(f'base_income_tax_cantonal: {base_income_tax_cantonal}')
+print(f'canton_municipal_church_tax: {canton_municipal_church_tax}')"""
