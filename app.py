@@ -1,11 +1,13 @@
 #Importing libraries.
 import pandas as pd
 
-income_gross = 200_000
-employed = True
-marital_status = "married"
-number_of_children = 2
-age = 45
+income_gross = 200_000 # int
+employed = True # bool
+marital_status = "married" # "married", "single"
+number_of_children = 2 # int
+commune =  "Bad Ragaz" # str, part of list "communes" -> see tax_multiplicators_cantonal_municipal section
+age = 45 #int
+church_affiliation = 'protestant' # None, 'protestant', 'roman_catholic', 'christian_catholic' , str
 contribution_pillar_3a = 10000 #can be max 7258 CHF p.Y for employed and 20% of income or 36288 chf for self employed, whatever is larger
 total_insurance_expenses = 8000 
 
@@ -155,16 +157,15 @@ tax_rates_cantonal = tax_rates_cantonal.rename(columns={
     "Taxable entity": "taxable_entity",
     "Tax authority": "tax_authority",
     "For the next CHF": "for_the_next_amount_CHF",
-    "Additional %": "additional_%",
- 
+    "Additional %": "additional_%"
 }) #renaming column titles
 
 tax_rates_cantonal = tax_rates_cantonal.drop(columns=["Canton ID"]) #delete irrelevant columns
-tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "").astype(float) #deleting "'" in the for_the_next_amount_CHF column and converting to float 
+tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "") #deleting "'" in the for_the_next_amount_CHF column and converting to float 
 
 tax_rates_cantonal.iloc[:, 4:] = tax_rates_cantonal.iloc[:, 4:].astype(float) #converting numeric columns to float 
 
-#print(tax_rates_cantonal.head(100))
+print(tax_rates_cantonal.head(100))
 
 #cantonal and municipal tax multipliers
 tax_multiplicators_cantonal_municipal = pd.read_csv('2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # importing dataset.not selecting header row yet as there are duplicates in column titles
@@ -179,12 +180,14 @@ tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_muni
 tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") #adjusting headers
 
 tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_municipal.iloc[:, 2:].astype(float) #convering numeric columns to float
+communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
+print(communes)
 
 #print(tax_multiplicators_cantonal_municipal.head(10))
 
-########################
+######################################
 # Calculation federal tax
-########################
+######################################
 
 #def income_tax_federal_calculation(marital_status, number_of_children, income_net):
 
@@ -229,4 +232,61 @@ def calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_
 
 
 income_tax_federal = calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net)
-print(income_tax_federal)
+print(f'income_tax_federal: {income_tax_federal}')
+
+
+
+######################################
+# Calculation cantonal base tax
+######################################
+
+def calculation_income_tax_base_SG(tax_rates_cantonal, income_net):
+    df = tax_rates_cantonal
+    remaining_income_net = income_net
+    base_income_tax_cantonal = 0.0
+
+    for i, row in df.iterrows(): # iterating through rows                   
+        band_width = row["for_the_next_amount_CHF"]
+        tax_rate_band = row["additional_%"]
+
+        if remaining_income_net <= 0:
+            break
+
+        taxable_amount_in_band = min(remaining_income_net, band_width)
+        base_income_tax_cantonal += taxable_amount_in_band * tax_rate_band / 100.0
+        remaining_income_net -= taxable_amount_in_band
+
+    return float(base_income_tax_cantonal)
+
+base_income_tax_cantonal = calculation_income_tax_base_SG(tax_rates_cantonal, income_net)
+print(f'base_income_tax_cantonal: {base_income_tax_cantonal}')
+
+
+
+######################################
+# Calculation municipality tax
+######################################
+
+def calculation_cantonal_municipal_church_tax(tax_multiplicators_cantonal_municipal, base_cantonal_tax, canton, commune, church_affiliation):
+    
+    df = tax_multiplicators_cantonal_municipal
+    
+    # filtering commune
+    row = df[(df["commune"] == commune)].iloc[0]
+
+    canton_mult = float(row["canton"]) / 100.0
+    commune_mult = float(row["commune"]) / 100.0
+
+    total_tax = base_cantonal_tax * (canton_mult + commune_mult)
+
+    if church_affiliation is not None:
+        col_map = {
+            "protestant": "church_protestant",
+            "roman_catholic": "church_roman_catholic",
+            "christian_catholic": "church_christian_catholic",
+        }
+        col = col_map[church_affiliation]
+        church_mult = float(row[col]) / 100.0
+        total_tax += base_cantonal_tax * church_mult
+
+    return float(total_tax)
