@@ -1,8 +1,10 @@
 #Importing libraries.
 import pandas as pd
 
-income_gross = 20_000
+income_gross = 200_000
 employed = True
+marital_status = "married"
+number_of_children = 2
 age = 45
 contribution_pillar_3a = 10000 #can be max 7258 CHF p.Y for employed and 20% of income or 36288 chf for self employed, whatever is larger
 total_insurance_expenses = 8000 
@@ -138,6 +140,8 @@ tax_rates_federal = tax_rates_federal.drop(columns=["taxable_entity"]) #drop old
 tax_rates_federal["children"] = tax_rates_federal["children"].str.replace("no children", "no").str.replace("with children", "yes") #renaming child column values to yes / no 
 tax_rates_federal["marital_status"] = tax_rates_federal["marital_status"].str.lower()
 
+tax_rates_federal.iloc[:, 4:] = tax_rates_federal.iloc[:, 4:].astype(float)
+
 #print(tax_rates_federal.head(100))
 
 #cantonal income tax
@@ -158,6 +162,8 @@ tax_rates_cantonal = tax_rates_cantonal.rename(columns={
 tax_rates_cantonal = tax_rates_cantonal.drop(columns=["Canton ID"]) #delete irrelevant columns
 tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "").astype(float) #deleting "'" in the for_the_next_amount_CHF column and converting to float 
 
+tax_rates_cantonal.iloc[:, 4:] = tax_rates_cantonal.iloc[:, 4:].astype(float) #converting numeric columns to float 
+
 #print(tax_rates_cantonal.head(100))
 
 #cantonal and municipal tax multipliers
@@ -165,15 +171,62 @@ tax_multiplicators_cantonal_municipal = pd.read_csv('2025_estv_tax_multipliers_s
 header_row = tax_multiplicators_cantonal_municipal.iloc[3] #select future header row and save it seperately
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # remove header & first rows from set
 tax_multiplicators_cantonal_municipal.columns = header_row # properly assign header 
+
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[:, 1:9]   # select relevant column range
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.drop(columns={'SFO Commune ID'}) #dropping irrelevant column 
+
 tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.lower() # headers: remove capitalization
 tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") #adjusting headers
 
+tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_municipal.iloc[:, 2:].astype(float) #convering numeric columns to float
+
+#print(tax_multiplicators_cantonal_municipal.head(10))
+
+########################
+# Calculation federal tax
+########################
+
+#def income_tax_federal_calculation(marital_status, number_of_children, income_net):
 
 
 
-print(tax_multiplicators_cantonal_municipal.head())
+#integrating married users and single users with kids into one federal tax class
+def map_marital_status_and_children_for_federal_tax(marital_status, number_of_children):
+
+    if number_of_children > 0 or marital_status == "married":
+        return "married/single"
+    else:
+        return "single"
+    
+### computing federal income tax
+def calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net):
+    # Map inputs to table keys
+    marital_status_children_key = map_marital_status_and_children_for_federal_tax(marital_status, number_of_children)
+
+    # Filter and copy relevant rows
+    df = tax_rates_federal[
+        (tax_rates_federal["tax_type"] == "Income tax")
+        & (tax_rates_federal["tax_authority"] == "Federal tax")
+        & (tax_rates_federal["marital_status"] == marital_status_children_key)
+            ].copy()
+
+    # Handling income below minimum
+    if income_net <= df["net_income"].min():
+        row = df.iloc[0]
+        return row["base_amount_CHF"]
+
+    # select last row with net_income (column name) <= income_net (derived from user input)
+    row = df[df["net_income"] <= income_net].iloc[-1]
+
+    base_amount_chf = row["base_amount_CHF"]
+    threshold_net_income = row["net_income"]
+    federal_tax_rate = row["additional_%"]  
+
+    taxable_excess = income_net - threshold_net_income
+    income_tax_federal = base_amount_chf + (taxable_excess * (federal_tax_rate / 100.0))
+
+    return income_tax_federal
 
 
-
+income_tax_federal = calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net)
+print(income_tax_federal)
