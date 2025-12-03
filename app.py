@@ -141,19 +141,24 @@ tax_rates_federal["marital_status"] = tax_rates_federal["marital_status"].str.lo
 #print(tax_rates_federal.head(100))
 
 #cantonal income tax
-tax_rates_federal = pd.read_csv('2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+tax_rates_cantonal = pd.read_csv('2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
 
-tax_rates_federal.columns = tax_rates_federal.iloc[0] #selecting row that will hold column titles
-tax_rates_federal = tax_rates_federal.rename(columns={
+tax_rates_cantonal.columns = tax_rates_cantonal.iloc[0] #selecting row that will hold column titles
+tax_rates_cantonal = tax_rates_cantonal[1:] #delete old titles
+tax_rates_cantonal = tax_rates_cantonal.loc[:, tax_rates_cantonal.columns.notna()]
+tax_rates_cantonal = tax_rates_cantonal.rename(columns={
     "Type of tax": "tax_type",
     "Taxable entity": "taxable_entity",
     "Tax authority": "tax_authority",
-    "Taxable income for federal tax": "net_income",
+    "For the next CHF": "for_the_next_amount_CHF",
     "Additional %": "additional_%",
-    "Base amount CHF": "base_amount_CHF"
+ 
 }) #renaming column titles
 
+tax_rates_cantonal = tax_rates_cantonal.drop(columns=["Canton ID"]) #delete irrelevant columns
+tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "").astype(float) #deleting "'" in the for_the_next_amount_CHF column and converting to float 
 
+print(tax_rates_cantonal.head(100))
 
 
 
