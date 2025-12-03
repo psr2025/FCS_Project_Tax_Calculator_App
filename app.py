@@ -160,13 +160,20 @@ tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next
 
 #print(tax_rates_cantonal.head(100))
 
-
-
 #cantonal and municipal tax multipliers
-tax_rates_municipal = pd.read_csv('2025_estv_tax_multipliers_sg.csv', sep=',', skiprows=2) # imports the set and skips the first rows (empty)
+tax_multiplicators_cantonal_municipal = pd.read_csv('2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # importing dataset.not selecting header row yet as there are duplicates in column titles
+header_row = tax_multiplicators_cantonal_municipal.iloc[3] #select future header row and save it seperately
+tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # remove header & first rows from set
+tax_multiplicators_cantonal_municipal.columns = header_row # properly assign header 
+tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[:, 1:9]   # select relevant column range
+tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.drop(columns={'SFO Commune ID'}) #dropping irrelevant column 
+tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.lower() # headers: remove capitalization
+tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") #adjusting headers
 
-tax_rates_municipal.columns = tax_rates_municipal.iloc[0] #selecting row that will hold column titles
-tax_rates_municipal = tax_rates_municipal[1:] #delete old titles
-tax_rates_municipal = tax_rates_municipal.loc[:, tax_rates_municipal.columns.notna()]
 
-print(tax_rates_municipal.head(100))
+
+
+print(tax_multiplicators_cantonal_municipal.head())
+
+
+
