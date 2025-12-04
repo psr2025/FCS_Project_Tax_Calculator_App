@@ -1,5 +1,6 @@
 #Importing libraries.
 import pandas as pd
+import data.social_security_constants as c
 
 income_gross = 200_000 # int
 employed = True # bool
@@ -17,22 +18,7 @@ total_insurance_expenses = 8000
 # Optional Deductions
 ###################################
 
-###Defining social deduction rates for employed and self-empleyed users as a share of gross income.
-#AHV - Old-Age & Survivors Insurance
-ahv_rate_employed = 0.0435
-ahv_rate_self_employed = 0.081 #### We assume that the self employed user earns >= CHF 60'500 -- eventually remove this restriction with this table "2025_social_contribution_tables_self_employment"
 
-#IV - Disability Insurance
-iv_rate_employed = 0.007
-iv_rate_self_employed = iv_rate_employed * 2
-
-#EO - Income Compensation Allowance 
-eo_rate_employed = 0.0025
-eo_rate_self_employed = eo_rate_employed * 2
-
-#ALV - Unemployment Insurance (not applicable to self-employed users. 1.1% for the share of income <= 148'200)
-alv_rate_employed = 0.011
-alv_income_ceiling = 148_200
 
 alv_total = alv_rate_employed * min(income_gross, alv_income_ceiling)
 
@@ -112,7 +98,7 @@ income_net = income_gross - (deduction_total_cantonal + deduction_total_federal)
 ###import datasets as csv
 
 #federal income tax
-tax_rates_federal = pd.read_csv('2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+tax_rates_federal = pd.read_csv('data/2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
 
 tax_rates_federal.columns = tax_rates_federal.iloc[0] #selecting row that will hold column titles
 tax_rates_federal = tax_rates_federal.rename(columns={
@@ -147,7 +133,7 @@ tax_rates_federal.iloc[:, 4:] = tax_rates_federal.iloc[:, 4:].astype(float)
 #print(tax_rates_federal.head(100))
 
 #cantonal income tax
-tax_rates_cantonal = pd.read_csv('2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+tax_rates_cantonal = pd.read_csv('data/2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
 
 tax_rates_cantonal.columns = tax_rates_cantonal.iloc[0] #selecting row that will hold column titles
 tax_rates_cantonal = tax_rates_cantonal[1:] #delete old titles
@@ -165,10 +151,10 @@ tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next
 
 tax_rates_cantonal.iloc[:, 4:] = tax_rates_cantonal.iloc[:, 4:].astype(float) #converting numeric columns to float 
 
-print(tax_rates_cantonal.head(100))
+#print(tax_rates_cantonal.head(100))
 
 #cantonal and municipal tax multipliers
-tax_multiplicators_cantonal_municipal = pd.read_csv('2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # importing dataset.not selecting header row yet as there are duplicates in column titles
+tax_multiplicators_cantonal_municipal = pd.read_csv('data/2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # importing dataset.not selecting header row yet as there are duplicates in column titles
 header_row = tax_multiplicators_cantonal_municipal.iloc[3] #select future header row and save it seperately
 tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # remove header & first rows from set
 tax_multiplicators_cantonal_municipal.columns = header_row # properly assign header 
@@ -182,10 +168,11 @@ tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_muni
 tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") #adjusting headers
 
 tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_municipal.iloc[:, 2:].astype(float) #convering numeric columns to float
-communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
-print(communes)
 
-print(tax_multiplicators_cantonal_municipal.head(10))
+communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
+#print(communes)
+
+#print(tax_multiplicators_cantonal_municipal.head(10))
 
 ######################################
 # Calculation federal tax
