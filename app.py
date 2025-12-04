@@ -1,6 +1,7 @@
 #Importing libraries.
 import pandas as pd
 import loaders.load_datasets as datasets
+import deductions.mandatory_deductions as d
 import tax_calculations.total_income_tax as t
 
 
@@ -13,6 +14,14 @@ age = 45 #int
 church_affiliation = 'protestant' # None, 'protestant', 'roman_catholic', 'christian_catholic' , str
 contribution_pillar_3a = 10000 #can be max 7258 CHF p.Y for employed and 20% of income or 36288 chf for self employed, whatever is larger
 total_insurance_expenses = 8000 
+
+####Determine deductions
+#Mandatory
+social_deductions_total = d.get_total_social_deductions(income_gross, employed)
+bv_minimal_contribution = d.get_mandatory_pension_contribution(income_gross, age)
+total_mandatory_deductions = d.get_total_mandatory_deductions(income_gross, age, employed)
+
+
 
 
 ###Final deductions. Still working on this, see folder "deductions"
