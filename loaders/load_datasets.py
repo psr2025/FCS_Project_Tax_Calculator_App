@@ -1,3 +1,4 @@
+#loaders/load_datasets.py
 # loading and cleaning the datasets
 
 #import libraries
@@ -93,25 +94,26 @@ def load_cantonal_municipal_church_multipliers():
 
 #print(tax_multiplicators_cantonal_municipal.head(10))
 
-#federal tax deductions
-def load_tax_deductions_federal():
-    tax_deductions_federal = pd.read_csv('data/2025_estv_deductions_federal.csv', sep=',') #importing dataset
-    header_row = tax_deductions_federal.iloc[3] 
-    tax_deductions_federal = tax_deductions_federal.iloc[4:]
-    tax_deductions_federal.columns = header_row # properly assign header 
-    tax_deductions_federal = tax_deductions_federal.iloc[:, 1:8]   # select relevant column range
-    tax_deductions_federal.columns = tax_deductions_federal.columns.str.lower().str.replace(" ", "_") # headers: remove capitalization
+#loads federal or cantonal tax deduction table. Their table layout is identical 
+def load_tax_deductions(tax_level):
+    if tax_level == "federal":
+        tax_deductions = pd.read_csv('data/2025_estv_deductions_federal.csv', sep=',') #importing federal dataset
+    else:
+        tax_deductions  = pd.read_csv('data/2025_estv_deductions_SG.csv', sep=',') #importing cantonal dataset
     
-    tax_deductions_federal["canton"] = tax_deductions_federal["canton"].str.lower()
-    tax_deductions_federal["type_of_tax"] = tax_deductions_federal["type_of_tax"].str.lower()
-    tax_deductions_federal["deduction"] = tax_deductions_federal["deduction"].str.lower().str.replace(" ", "_")
-    tax_deductions_federal["amount"] = tax_deductions_federal["amount"].str.replace("'", "").astype(float)
-    tax_deductions_federal["percent"] = tax_deductions_federal["percent"].astype(float)
-    tax_deductions_federal["minimum"] = tax_deductions_federal["minimum"].str.replace("'", "").astype(float) #deleting "'" in the minimum deduction and converting to float 
-    tax_deductions_federal["maximum"] = tax_deductions_federal["maximum"].str.replace("'", "").astype(float) #deleting "'" in the maximum deduction and converting to float 
+    header_row = tax_deductions.iloc[3] 
+    tax_deductions = tax_deductions.iloc[4:]
+    tax_deductions.columns = header_row # properly assign header 
+    tax_deductions = tax_deductions.iloc[:, 1:8]   # select relevant column range
+    tax_deductions.columns = tax_deductions.columns.str.lower().str.replace(" ", "_") # headers: remove capitalization
     
+    tax_deductions["canton"] = tax_deductions["canton"].str.lower()
+    tax_deductions["type_of_tax"] = tax_deductions["type_of_tax"].str.lower()
+    tax_deductions["deduction"] = tax_deductions["deduction"].str.lower().str.replace(" ", "_")
+    tax_deductions["amount"] = tax_deductions["amount"].str.replace("'", "").astype(float)
+    tax_deductions["percent"] = tax_deductions["percent"].astype(float)
+    tax_deductions["minimum"] = tax_deductions["minimum"].str.replace("'", "").astype(float) #deleting "'" in the minimum deduction and converting to float 
+    tax_deductions["maximum"] = tax_deductions["maximum"].str.replace("'", "").astype(float) #deleting "'" in the maximum deduction and converting to float 
+    
+    return tax_deductions
 
-    return tax_deductions_federal
-
-tax_deductions_federal = load_tax_deductions_federal()
-print(tax_deductions_federal.head(10))
