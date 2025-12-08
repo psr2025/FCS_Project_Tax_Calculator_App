@@ -14,13 +14,28 @@ High-level flow:
 """
 
 
-#Import libraries and scripts
+# --------------------------------------------------------------------
+# Import libraries and scripts
+# --------------------------------------------------------------------
+
 import pandas as pd
+
+# Contains script that imports and cleans the datasets
 import loaders.load_datasets as datasets
+
+# Contains the script that calculates the mandatory deductions 
 import deductions.mandatory_deductions as md
+
+# Contains the script that calculates the optional deductions 
 import deductions.optional_deductions as od
+
+# Contains the script that calculates the total income tax burden
 import tax_calculations.total_income_tax as t
 
+
+# --------------------------------------------------------------------
+# User input (will be replaced by UI / CLI later)
+# --------------------------------------------------------------------
 
 """
 Parameters (annual, CHF, user input):
@@ -49,7 +64,6 @@ Additional cantonal-only inputs:
     number_of_children_7_and_over      : children aged 7 or more, input type: int 
 """
 
-
 income_gross = 100_000 
 employed = True
 marital_status = "single" 
@@ -58,6 +72,7 @@ commune =  "Bad Ragaz"
 age = 45 #int
 church_affiliation = 'protestant' 
 contribution_pillar_3a = 10000 
+total_insurance_expenses = 3500
 child_care_expenses_third_party = 200
 travel_expenses_main_income = 200
 is_two_income_couple = False
@@ -66,15 +81,29 @@ child_education_expenses = 150
 number_of_children_under_7 = 2
 number_of_children_7_and_over = 0
 
-##########################################################################################
-####Determine deductions
-##Mandatory deductions
+
+# --------------------------------------------------------------------
+# Mandatory deductions (Pillar 1 + minimal Pillar 2)
+# --------------------------------------------------------------------
+
+"""EVENTUALLY LEAVE OUT ENTRIES 1 + 2"""
+# Get Pillar 1 deductions
 social_deductions_total = md.get_total_social_deductions(income_gross, employed)
+
+# Get mandatory minimal Pillar 2 deductions 
 bv_minimal_contribution = md.get_mandatory_pension_contribution(income_gross, age)
+
+# Get total mandatory deductions
+# The function is defined in deductions/mandatory_deductions.py
 total_mandatory_deductions = md.get_total_mandatory_deductions(income_gross, age, employed)
 
-##Optional deductions
-#Optional deduction federal 
+
+# --------------------------------------------------------------------
+# Optional deductions (federal level)
+# --------------------------------------------------------------------
+
+# Get a dictionary containing the individual and total optional federal deductions. 
+# The function is defined in deductions/optional_deductions.py
 federal_optional_deductions = od.calculate_federal_optional_deductions( 
     income_gross,
     employed,
@@ -83,11 +112,18 @@ federal_optional_deductions = od.calculate_federal_optional_deductions(
     contribution_pillar_3a,
     total_insurance_expenses,
     travel_expenses_main_income,
-    child_care_expenses_third_party) #Returns a dict with individual and total federal optional deductions
+    child_care_expenses_third_party) 
 
+# Get total federal optional deductions from the returned dictionary
 total_optimal_deduction_federal = federal_optional_deductions["total_federal_optional_deductions"]
     
-#Optional deduction cantonal 
+
+# --------------------------------------------------------------------
+# Optional deductions (cantonal level, SG)
+# --------------------------------------------------------------------
+
+# Get dictionary containing individual and total optional deductions on cantonal level
+# The function is defined in deductions/optional_deductions.py
 cantonal_optional_deduction = od.calculate_cantonal_optional_deductions(
     income_gross,
     employed,
@@ -103,25 +139,33 @@ cantonal_optional_deduction = od.calculate_cantonal_optional_deductions(
     number_of_children_under_7,
     number_of_children_7_and_over)
 
+# Get total cantonal optional deductions from the returned dictionary
 total_optional_deduction_cantonal = cantonal_optional_deduction["total_cantonal_optional_deductions"]
 
 
-
-   
-##########################################################################################
-###Calculate net income for cantonal and federal tax
-
+# --------------------------------------------------------------------
+# Calculate net taxable income on federal and cantonal level
+# --------------------------------------------------------------------
+# Add the optional deductions on cantonal and federal level to calculate the total net taxable income on each level 
 income_net_federal = income_gross - (total_mandatory_deductions + total_optimal_deduction_federal)
 income_net_cantonal = income_gross - (total_mandatory_deductions + total_optional_deduction_cantonal)
 
 
-##########################################################################################
-# Calculating tax
-#getting datasets
+# --------------------------------------------------------------------
+# Load tax tables and multipliers
+# --------------------------------------------------------------------
+
+# Load cleaned tax tables and multipliers through functions defined in loaders/load_datasets.py
 tax_rates_federal = datasets.load_federal_tax_rates()
 tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
 tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
 
+
+# --------------------------------------------------------------------
+# Calculate total tax (federal + canton + commune + church)
+# --------------------------------------------------------------------
+
+# Calculate the total income tax burder through the function defined in tax_calculations/total_income_tax.py
 income_tax_dictionary = t.calculation_total_income_tax(
     tax_rates_federal,
     tax_rates_cantonal,
@@ -131,8 +175,12 @@ income_tax_dictionary = t.calculation_total_income_tax(
     income_net_federal=income_net_federal,
     income_net_cantonal=income_net_cantonal,
     commune=commune,
-    church_affiliation=church_affiliation,
-)
+    church_affiliation=church_affiliation)
+
+
+# --------------------------------------------------------------------
+# Print output
+# --------------------------------------------------------------------
 
 print("\n===== Income Tax Result =====")
 for key, value in income_tax_dictionary.items():
