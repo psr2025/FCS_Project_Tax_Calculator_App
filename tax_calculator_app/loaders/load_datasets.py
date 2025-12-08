@@ -1,5 +1,4 @@
-#loaders/load_datasets.py
-# loading and cleaning the datasets
+#loading and cleaning the datasets
 
 #import libraries
 import pandas as pd
@@ -103,17 +102,17 @@ def load_tax_deductions(tax_level):
     
     header_row = tax_deductions.iloc[3] 
     tax_deductions = tax_deductions.iloc[4:]
-    tax_deductions.columns = header_row # properly assign header 
-    tax_deductions = tax_deductions.iloc[:, 1:8]   # select relevant column range
-    tax_deductions.columns = tax_deductions.columns.str.lower().str.replace(" ", "_") # headers: remove capitalization
+    tax_deductions.columns = header_row 
+    tax_deductions = tax_deductions.iloc[:, 1:8] 
+    tax_deductions.columns = tax_deductions.columns.str.lower().str.replace(" ", "_")
     
     tax_deductions["canton"] = tax_deductions["canton"].str.lower()
     tax_deductions["type_of_tax"] = tax_deductions["type_of_tax"].str.lower()
     tax_deductions["deduction"] = tax_deductions["deduction"].str.lower().str.replace(" ", "_")
     tax_deductions["amount"] = tax_deductions["amount"].str.replace("'", "").astype(float)
     tax_deductions["percent"] = tax_deductions["percent"].astype(float)
-    tax_deductions["minimum"] = tax_deductions["minimum"].str.replace("'", "").astype(float) #deleting "'" in the minimum deduction and converting to float 
-    tax_deductions["maximum"] = tax_deductions["maximum"].str.replace("'", "").astype(float) #deleting "'" in the maximum deduction and converting to float 
+    tax_deductions["minimum"] = tax_deductions["minimum"].str.replace("'", "").astype(float)
+    tax_deductions["maximum"] = tax_deductions["maximum"].str.replace("'", "").astype(float) 
     
     return tax_deductions
 
