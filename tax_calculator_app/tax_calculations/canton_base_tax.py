@@ -1,6 +1,5 @@
-#tax_calculations/canton_base_tax.py
+# Importing libraries
 import pandas as pd
-
 
 ######################################
 # Calculation cantonal base tax

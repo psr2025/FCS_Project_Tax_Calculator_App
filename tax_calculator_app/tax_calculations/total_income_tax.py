@@ -1,11 +1,7 @@
-
-#tax_calculations/total_income_tax.py
+# Backend modules
 import tax_calculations.federal_tax as fed
 import tax_calculations.canton_municipal_church_tax as can
 import tax_calculations.canton_base_tax as base
-
-
-
 
 ######################################
 # Calculation total income tax
@@ -38,7 +34,7 @@ def calculation_total_income_tax(
 
     total_income_tax = federal_tax + total_canton_municipal_church
 
-    #create dictionary 
+    # create dictionary 
     income_tax_unrounded = {
         "federal_tax": federal_tax,
         "cantonal_base_tax": base_income_tax_cantonal,

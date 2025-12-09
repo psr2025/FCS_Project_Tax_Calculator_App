@@ -1,5 +1,4 @@
 
-#deductions/mandatory_deductions.py
 import data.constants as c
 
 ###################################
@@ -18,15 +17,15 @@ def get_total_social_deductions(income_gross, employed):
         alv_total = 0.0 #setting alv rate to 0 for unemployed
         social_rate = (c.ahv_rate_self_employed + c.iv_rate_self_employed + c.eo_rate_self_employed)
 
-    #calculate social deductions total
+    # calculate social deductions total
     social_deductions_total = income_gross * social_rate + alv_total
     return social_deductions_total
 
 
-### Determine Minimal mandatory Second Pillar deductions (Occupational pension) for employed
+# Determine Minimal mandatory Second Pillar deductions (Occupational pension) for employed
 
 def get_mandatory_pension_contribution(income_gross, age):
-    #select the minimal rate depending on age 
+    # select the minimal rate depending on age 
     if income_gross < c.coord_salary_min or age < 25: # If salary below coordination level or age under 25 → no BV
         bv_rate = 0.0
     elif 25 <= age <= 34:
@@ -53,7 +52,7 @@ def get_mandatory_pension_contribution(income_gross, age):
 
 def get_total_mandatory_deductions(income_gross, age, employed):
 
-    #Sum of social deductions (AHV/IV/EO/ALV) + minimal BVG for given income/age/employment.
+    # Sum of social deductions (AHV/IV/EO/ALV) + minimal BVG for given income/age/employment.
     social_deductions_total = get_total_social_deductions(income_gross, employed)
     bv_minimal_contribution = get_mandatory_pension_contribution(income_gross, age)
     total_mandatory_deductions = social_deductions_total + bv_minimal_contribution
