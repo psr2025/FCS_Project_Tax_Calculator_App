@@ -18,6 +18,10 @@ alv_income_ceiling = 148_200
 
 
 ###Mandatory Second Pillar deductions (Occupational pension) for employed
+
+# Coordination deduction 
+coordination_deduction = 26_460
+
 #BV salary bounds
 coord_salary_min = 26_460
 coord_salary_max = 90_720
@@ -27,3 +31,7 @@ bv_rate_25_34 = 0.07
 bv_rate_35_44 = 0.10
 bv_rate_45_54 = 0.15
 bv_rate_55_65 = 0.18
+
+# Share of contributions to be paid by employer. The employer is obligated to contribute >= 50% of total contributions. 
+# We assume a contribution of 50%, therefore our resulting deduction might be higher than the result of other calculaters that rely on an empirical average. 
+employer_contribution_share = 0.5

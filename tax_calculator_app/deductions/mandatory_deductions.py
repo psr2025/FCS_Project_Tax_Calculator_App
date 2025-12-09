@@ -40,7 +40,15 @@ def get_mandatory_pension_contribution(income_gross, age):
     else:
         bv_rate = 0.0
 
-    bv_minimal_contribution = bv_rate * min(income_gross, c.coord_salary_max) #calculate the minimal contribution 
+    # Computing coordinated salary by subtraction of the coordination deduction from gross income
+    coord_salary = income_gross - c.coordination_deduction
+
+    # BVG contributions do not apply beyond the maximum coordinated salary
+    bv_minimal_contribution_total = bv_rate * min(coord_salary, c.coord_salary_max)
+
+    # Multiply the total contribution by the share covered by the employee (the employer is obligated to cover >=50%, we assume 50%)
+    bv_minimal_contribution = bv_minimal_contribution_total * (1 - c.employer_contribution_share)
+
     return bv_minimal_contribution
 
 def get_total_mandatory_deductions(income_gross, age, employed):
