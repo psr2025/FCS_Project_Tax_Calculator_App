@@ -193,7 +193,7 @@ if calc:
 
     # Compute total tax as fallback
     numeric_components = {k: v for k, v in income_tax_dictionary.items() if isinstance(v, (int, float))}
-    total_tax = income_tax_dictionary.get("total_tax", None)
+    total_tax = income_tax_dictionary.get("total_income_tax", None)
     if total_tax is None:
         total_tax = sum(numeric_components.values())
 
@@ -202,7 +202,8 @@ if calc:
 
     # Visualization of tax breakdown
     # Filter out zero or negative entries
-    viz_components = {k: float(v) for k, v in numeric_components.items() if float(v) > 0}
+    viz_components = {k: float(v) for k, v in numeric_components.items()
+                  if k != "total_income_tax" and float(v) > 0}
 
     if viz_components:
 
