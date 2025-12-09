@@ -23,7 +23,6 @@ communes = tax_multiplicators_cantonal_municipal["commune"].tolist()
 
 # Streamlit UI
 # Sidebar
-st.set_page_config(page_title="Tax Calcualator", page_icon="🧮")
 st.sidebar.success("Welcome to the St. Gallen tax calculator!")
 
 
