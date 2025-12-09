@@ -1,9 +1,9 @@
-# tax_calculator_app/🧮_Tax_calculator.py
 # Importing libraries
 import streamlit as st
 import pandas as pd
 import numpy as np
 import difflib
+import re
 import time
 import plotly.express as px
 
@@ -43,24 +43,46 @@ with st.container():
     else:
         employed = False
     
-    commune = st.text_input("Municipality / commune", value="")
+    # Use a placeholder so we can replace the text input with suggestions
+    commune_placeholder = st.empty()
+    commune_input = commune_placeholder.text_input("Municipality / commune", value="")
 
-    # Validate commune against dataset and offer suggestions
+    # Validate commune against dataset and offer suggestions (replace input with selectbox)
     try:
         _df_mul = datasets.load_cantonal_municipal_church_multipliers()
         _communes_series = _df_mul.iloc[:, 1].astype(str).str.strip()
         _communes_list = _communes_series.tolist()
         _communes_lower_map = {c.lower(): c for c in _communes_list}
+        # normalized map removes punctuation/spaces for more robust matching
+        _communes_norm_map = {re.sub(r'[^a-z0-9]', '', c.lower()): c for c in _communes_list}
 
-        if commune and commune.strip():
-            _commune_norm = commune.strip().lower()
-            if _commune_norm not in _communes_lower_map:
+        # default to what the user typed
+        commune = commune_input
+
+        if commune_input and commune_input.strip():
+            raw_lower = commune_input.strip().lower()
+            norm_key = re.sub(r'[^a-z0-9]', '', raw_lower)
+
+            # if normalized user input matches a canonical entry, accept it
+            if norm_key in _communes_norm_map:
+                commune = _communes_norm_map[norm_key]
+            # otherwise if exact lowercase match exists, accept canonical
+            elif raw_lower in _communes_lower_map:
+                commune = _communes_lower_map[raw_lower]
+            else:
                 st.error("Is the name of the commune correct?")
-                # fuzzy suggestions
-                close = difflib.get_close_matches(_commune_norm, list(_communes_lower_map.keys()), n=6, cutoff=0.4)
-                suggestions = [ _communes_lower_map[c] for c in close ]
+                # suggestions: first try substring matches on normalized forms
+                matches = [c for c in _communes_list if norm_key in re.sub(r'[^a-z0-9]', '', c.lower())]
+                if matches:
+                    # sort alphabetically and show all matches
+                    suggestions = sorted(matches)
+                else:
+                    # fallback to fuzzy matching on normalized keys when no substring matches found
+                    close = difflib.get_close_matches(norm_key, list(_communes_norm_map.keys()), n=50, cutoff=0.4)
+                    suggestions = [_communes_norm_map[c] for c in close]
+
                 if suggestions:
-                    pick = st.selectbox("Did you mean (pick to replace):", [""] + suggestions)
+                    pick = commune_placeholder.selectbox("Please choose the commune you live in:", [""] + suggestions)
                     if pick:
                         commune = pick
                 else:
@@ -73,7 +95,7 @@ with st.container():
 
     # Inputs income
     st.header("Input your income data here")
-    income_gross = st.number_input("Gross income 2025 in CHF", min_value=0, value=0, step=1000, help="Enter your annual gross income in CHF")
+    income_gross = st.number_input("Gross income 2025 in CHF", min_value=0, value=0, step=5000, help="Enter your annual gross income in CHF")
     
     taxable_assets = st.number_input("Taxable assets in CHF", min_value=0, value=0, step=1000)
 
@@ -97,7 +119,7 @@ with st.container():
         number_of_children_7_and_over = 0
         number_of_children = 0
 
-    child_education_expenses = st.number_input("Child education expenses (CHF)", min_value=0, value=0, step=10)
+    child_education_expenses = st.number_input("Child education expenses in CHF", min_value=0, value=0, step=10)
 
 # Button to trigger calculation
 calc = st.button("Calculate", type="primary")
@@ -109,6 +131,8 @@ if calc:
 
     placeholder.progress(0, "Calculating...")
     time.sleep(1)
+    placeholder.progress(50, "Calculating..")
+    time.sleep(0.5)
     placeholder.progress(50, "Calculating..")
     time.sleep(1)
     placeholder.progress(100, "Calculation complete!")
@@ -230,7 +254,7 @@ if calc:
                 title="Tax breakdown",
                 hole=0.3,
             )
-            fig.update_traces(textposition="inside", textinfo="percent+label")
+            fig.update_traces(textposition="inside", textinfo="percent")
             st.plotly_chart(fig, use_container_width=True)
         except Exception:
             st.warning(
