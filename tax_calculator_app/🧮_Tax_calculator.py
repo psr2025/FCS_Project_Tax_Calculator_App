@@ -15,6 +15,12 @@ import tax_calculations.total_income_tax as t
 
 ##################################################################################################
 
+# load datasets 
+tax_rates_federal = datasets.load_federal_tax_rates()
+tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
+tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
+communes = tax_multiplicators_cantonal_municipal["commune"].tolist()
+
 # Streamlit UI
 # Sidebar
 st.set_page_config(page_title="Tax Calcualator", page_icon="🧮")
@@ -194,11 +200,8 @@ if calc:
     income_net_federal = income_gross - (total_mandatory_deductions + total_optimal_deduction_federal)
     income_net_cantonal = income_gross - (total_mandatory_deductions + total_optional_deduction_cantonal)
 
-    # load datasets and compute taxes
-    tax_rates_federal = datasets.load_federal_tax_rates()
-    tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
-    tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
 
+    # compute taxes
     income_tax_dictionary = t.calculation_total_income_tax(
         tax_rates_federal,
         tax_rates_cantonal,
