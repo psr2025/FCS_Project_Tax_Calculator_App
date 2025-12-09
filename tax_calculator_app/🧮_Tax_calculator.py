@@ -48,53 +48,10 @@ with st.container():
         employed = True
     else:
         employed = False
+
     
-    # Use a placeholder so we can replace the text input with suggestions
-    commune_placeholder = st.empty()
-    commune_input = commune_placeholder.text_input("Municipality / commune", value="")
-
-    # Validate commune against dataset and offer suggestions (replace input with selectbox)
-    try:
-        _df_mul = datasets.load_cantonal_municipal_church_multipliers()
-        _communes_series = _df_mul.iloc[:, 1].astype(str).str.strip()
-        _communes_list = _communes_series.tolist()
-        _communes_lower_map = {c.lower(): c for c in _communes_list}
-        # normalized map removes punctuation/spaces for more robust matching
-        _communes_norm_map = {re.sub(r'[^a-z0-9]', '', c.lower()): c for c in _communes_list}
-
-        # default to what the user typed
-        commune = commune_input
-
-        if commune_input and commune_input.strip():
-            raw_lower = commune_input.strip().lower()
-            norm_key = re.sub(r'[^a-z0-9]', '', raw_lower)
-
-            # if normalized user input matches a canonical entry, accept it
-            if norm_key in _communes_norm_map:
-                commune = _communes_norm_map[norm_key]
-            # otherwise if exact lowercase match exists, accept canonical
-            elif raw_lower in _communes_lower_map:
-                commune = _communes_lower_map[raw_lower]
-            else:
-                st.error("Is the name of the commune correct?")
-                # suggestions: first try substring matches on normalized forms
-                matches = [c for c in _communes_list if norm_key in re.sub(r'[^a-z0-9]', '', c.lower())]
-                if matches:
-                    # sort alphabetically and show all matches
-                    suggestions = sorted(matches)
-                else:
-                    # fallback to fuzzy matching on normalized keys when no substring matches found
-                    close = difflib.get_close_matches(norm_key, list(_communes_norm_map.keys()), n=50, cutoff=0.4)
-                    suggestions = [_communes_norm_map[c] for c in close]
-
-                if suggestions:
-                    pick = commune_placeholder.selectbox("Please choose the commune you live in:", [""] + suggestions)
-                    if pick:
-                        commune = pick
-                else:
-                    st.info("No close matches found. Check spelling or use the official commune name.")
-    except Exception:
-        st.warning("Could not load commune list for validation.")
+    commune = st.selectbox("Municipality / commune", options=communes, index=0)
+     
     
     church_affiliation = st.selectbox("What is your confession?", ("Roman Catholic", "Protestant", "Christian Catholic", "Other/None"), index=3)
 
