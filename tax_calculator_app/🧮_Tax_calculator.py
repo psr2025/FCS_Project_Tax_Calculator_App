@@ -174,6 +174,7 @@ if calc:
     tax_rates_federal = datasets.load_federal_tax_rates()
     tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
     tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
+    
 
     income_tax_dictionary = t.calculation_total_income_tax(
         tax_rates_federal,
