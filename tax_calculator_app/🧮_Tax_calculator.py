@@ -1,3 +1,4 @@
+# tax_calculator_app/🧮_Tax_calculator.py
 # Importing libraries
 import streamlit as st
 import pandas as pd
@@ -230,9 +231,6 @@ if calc:
     else:
         # Non-numeric or empty response
         st.error("Are your inputs correct?")
-
-
-
 
     
 
