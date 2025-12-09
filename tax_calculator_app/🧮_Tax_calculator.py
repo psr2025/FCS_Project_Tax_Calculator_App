@@ -15,6 +15,12 @@ import tax_calculations.total_income_tax as t
 
 ##################################################################################################
 
+# load datasets 
+tax_rates_federal = datasets.load_federal_tax_rates()
+tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
+tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
+communes = tax_multiplicators_cantonal_municipal["commune"].tolist()
+
 # Streamlit UI
 # Sidebar
 st.set_page_config(page_title="Tax Calcualator", page_icon="🧮")
@@ -43,30 +49,8 @@ with st.container():
     else:
         employed = False
     
-    commune = st.text_input("Municipality / commune", value="")
+    commune = st.selectbox("Municipality / commune", communes)
 
-    # Validate commune against dataset and offer suggestions
-    try:
-        _df_mul = datasets.load_cantonal_municipal_church_multipliers()
-        _communes_series = _df_mul.iloc[:, 1].astype(str).str.strip()
-        _communes_list = _communes_series.tolist()
-        _communes_lower_map = {c.lower(): c for c in _communes_list}
-
-        if commune and commune.strip():
-            _commune_norm = commune.strip().lower()
-            if _commune_norm not in _communes_lower_map:
-                st.error("Is the name of the commune correct?")
-                # fuzzy suggestions
-                close = difflib.get_close_matches(_commune_norm, list(_communes_lower_map.keys()), n=6, cutoff=0.4)
-                suggestions = [ _communes_lower_map[c] for c in close ]
-                if suggestions:
-                    pick = st.selectbox("Did you mean (pick to replace):", [""] + suggestions)
-                    if pick:
-                        commune = pick
-                else:
-                    st.info("No close matches found. Check spelling or use the official commune name.")
-    except Exception:
-        st.warning("Could not load commune list for validation.")
     
     church_affiliation = st.selectbox("What is your confession?", ("Roman Catholic", "Protestant", "Christian Catholic", "Other/None"), index=3)
 
@@ -170,12 +154,8 @@ if calc:
     income_net_federal = income_gross - (total_mandatory_deductions + total_optimal_deduction_federal)
     income_net_cantonal = income_gross - (total_mandatory_deductions + total_optional_deduction_cantonal)
 
-    # load datasets and compute taxes
-    tax_rates_federal = datasets.load_federal_tax_rates()
-    tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
-    tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
-    
 
+    # compute taxes
     income_tax_dictionary = t.calculation_total_income_tax(
         tax_rates_federal,
         tax_rates_cantonal,
