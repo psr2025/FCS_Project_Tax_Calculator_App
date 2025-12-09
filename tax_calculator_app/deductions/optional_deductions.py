@@ -1,4 +1,4 @@
-#deductions/optional_deductions.py
+# Libraries
 import pandas as pd
 import data.constants as c
 import loaders.load_datasets as ld
@@ -6,28 +6,21 @@ import loaders.load_datasets as ld
 
 
 
-### Calculate optional deductions
-#get federal_deductions
+# Calculate optional deductions
+# get federal_deductions
 
 ###########################################################
 # Helper functions
 ###########################################################
 
 def get_row_by_keyword(df, keyword):
-    """
-    Return the first row in df['deduction'] that contains `keyword`
-    (case-insensitive). Raises if nothing is found.
-    """
+
     mask = df["deduction"].str.contains(keyword, case=False, na=False)
 
     return df[mask].iloc[0]
 
 
 def cap_to_min_max(amount: float, minimum: float, maximum: float) -> float:
-    """
-    Apply minimum and maximum caps from the table.
-    If minimum or maximum are 0, they are treated as 'no lower/upper bound'
-    """
     value = amount
     if minimum > 0:
         value = max(value, minimum)
@@ -50,12 +43,7 @@ def calculate_federal_optional_deductions(
     travel_expenses_main_income: float = 0.0,
     child_care_expenses_third_party: float = 0.0,
 ):
-    """
-    Federal optional deductions (Confederation – Income tax)
 
-    Returns a dict with individual deductions and
-    'total_federal_optional_deductions'.
-    """
     # get dataset
     tax_deductions_federal = ld.load_tax_deductions(tax_level="federal")
     df = tax_deductions_federal

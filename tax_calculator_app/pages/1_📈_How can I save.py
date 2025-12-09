@@ -1,12 +1,11 @@
-# pages/1_📈_How can I save.py
-#Import necessary libraries
+# Import necessary libraries
 import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
 import time
 
-#Import machine learning modules
+# Import machine learning modules
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import train_test_split
