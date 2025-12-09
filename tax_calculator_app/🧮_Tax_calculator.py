@@ -189,49 +189,62 @@ if calc:
 
 ###########################################################################
 
-# Show results in the app
+    # Show results in the app 
 
-    # Compute total tax as fallback
-    numeric_components = {k: v for k, v in income_tax_dictionary.items() if isinstance(v, (int, float))}
-    total_tax = income_tax_dictionary.get("total_income_tax", None)
-    if total_tax is None:
-        total_tax = sum(numeric_components.values())
+    # We only want these four components in the breakdown:
+    component_keys = ["federal_tax", "cantonal_tax", "municipal_tax", "church_tax"]
 
-    # Display total as a metric
-    st.metric(label="Your estimated total tax in 2025", value=f"CHF {total_tax:,.2f}")
+    # Build dict with just those four
+    viz_components = {
+        key: float(income_tax_dictionary.get(key, 0.0))
+        for key in component_keys
+        if float(income_tax_dictionary.get(key, 0.0)) > 0
+    }
 
-    # Visualization of tax breakdown
-    # Filter out zero or negative entries
-    viz_components = {k: float(v) for k, v in numeric_components.items()
-                  if k != "total_income_tax" and float(v) > 0}
+    if not viz_components:
+        st.error("Are your inputs correct?")
+    else:
+        # Total tax is the sum of those four components
+        # (this should equal income_tax_dictionary["total_income_tax"])
+        total_tax = sum(viz_components.values())
 
-    if viz_components:
-
-        viz_components.pop("total_tax", None)
+        # Display total as a metric
+        st.metric(
+            label="Your estimated total tax in 2025",
+            value=f"CHF {total_tax:,.2f}",
+        )
 
         # Build visualization dataframe and display a pie chart
-        # display a numeric table as a fallback
-        df_viz = pd.DataFrame({"component": list(viz_comp for viz_comp in viz_components.keys()),
-                               "amount": list(viz_components.values())})
-        # Try Plotly first
+        df_viz = pd.DataFrame(
+            {
+                "component": list(viz_components.keys()),
+                "amount": list(viz_components.values()),
+            }
+        )
+
         try:
-            fig = px.pie(df_viz, names="component", values="amount", title="Tax breakdown",
-                         hole=0.3)
-            fig.update_traces(textposition="inside", textinfo="percent")
+            fig = px.pie(
+                df_viz,
+                names="component",
+                values="amount",
+                title="Tax breakdown",
+                hole=0.3,
+            )
+            fig.update_traces(textposition="inside", textinfo="percent+label")
             st.plotly_chart(fig, use_container_width=True)
         except Exception:
-            # Numeric table, instead of chart
-            st.warning("Interactive chart unavailable — showing numeric breakdown instead.")
-            st.table(df_viz.assign(amount=df_viz["amount"].map(lambda x: f"CHF {x:,.0f}")))
+            st.warning(
+                "Interactive chart unavailable — showing numeric breakdown instead."
+            )
+            st.table(
+                df_viz.assign(amount=df_viz["amount"].map(lambda x: f"CHF {x:,.0f}"))
+            )
 
         # Print compact table of components
         st.write("### Tax breakdown")
         for k, v in viz_components.items():
-            st.write(f"- **{k.replace('_', ' ').capitalize()}**: CHF {v:,.0f} ({v/total_tax:.1%})")
-
-    else:
-        # Non-numeric or empty response
-        st.error("Are your inputs correct?")
+            label = k.replace("_", " ").capitalize()
+            st.write(f"- **{label}**: CHF {v:,.0f} ({v/total_tax:.1%})")
 
     
 
