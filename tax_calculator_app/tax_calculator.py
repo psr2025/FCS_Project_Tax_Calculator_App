@@ -255,7 +255,7 @@ if calc:
         # ML-based deduction opportunity recommender
         # -----------------------------------------------------------------
         if savings_models:
-            st.write("### Tax-saving opportunities (ML-based)")
+            st.write("### Tax-saving opportunities")
 
             # Build feature row exactly like in the training dataset
             features_for_ml = {
