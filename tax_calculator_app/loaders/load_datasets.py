@@ -3,6 +3,11 @@
 
 #import libraries
 import pandas as pd
+import requests 
+from io import StringIO
+import urllib3
+import zipfile
+import io
 
 ###import datasets as csv
 #loads and cleans federal income tax rate dataset
@@ -69,6 +74,63 @@ def load_cantonal_base_tax_rates():
 #print(tax_rates_cantonal.head(100))
 
 
+def load_municipal_multipliers_api():
+    """
+    Downloads the STADA2 ZIP export, extracts the real data CSV
+    (not the metadata file), and returns it as a pandas DataFrame.
+    """
+
+    url = (
+        "https://stada2.sg.ch/webapp/gpsg/GPSG"
+        "?type=EXPORT"
+        "&raum=3251,3311,3441,3231,3291,3232,3312,3211,3233,3271,3395,3401,3234,3352,"
+        "3212,3252,3342,3402,3292,3442,3272,3213,3341,3443,3273,3201,3405,3313,3392,"
+        "3374,3393,3253,3293,3214,3394,3202,3396,3360,3422,3423,3424,3254,3407,3294,"
+        "3295,3340,3255,3235,3215,3216,3256,3296,3315,3338,3274,3275,3236,3203,3217,"
+        "3237,3218,3219,3339,3408,3297,3444,3298,3276,3379,3316,3238,3427,3359,3204,"
+        "3426"
+        "&indikatoren=93"
+        "&jahr=2025"
+        "&export=CSV"
+    )
+
+    response = requests.get(url, verify=False)
+    response.raise_for_status()
+
+    zip_bytes = io.BytesIO(response.content)
+
+    with zipfile.ZipFile(zip_bytes) as z:
+        file_list = z.namelist()
+        print("Files inside ZIP:")
+        for f in file_list:
+            print(" -", f)
+
+        data_files = [
+            name for name in file_list
+            if name.lower().endswith(".csv")
+            and "meta" not in name.lower()
+        ]
+        if not data_files:
+            raise ValueError("No data CSV found inside the ZIP.")
+
+        data_csv_name = data_files[0]
+        print("Using data file:", data_csv_name)
+
+        with z.open(data_csv_name) as f:
+            municipal_multipliers = pd.read_csv(f, sep=";", encoding="latin1")
+        
+    municipal_multipliers = municipal_multipliers[municipal_multipliers.iloc[:, 2].str.strip().str.lower()== "gemeindefinanzen rmsg"] # Filtering only rows that feature the current calculation standard (rmsg)
+    municipal_multipliers = municipal_multipliers.iloc[:, [1, 8]] # selecting only relevant columns (commune name and municipal multiplier)
+    municipal_multipliers.columns = ["commune", "municipal_multiplier"] # renaming columns
+    municipal_multipliers = municipal_multipliers.sort_values(by="commune")
+
+    return municipal_multipliers
+
+
+if __name__ == "__main__":
+    df = load_municipal_multipliers_api()
+    print(df.head())
+    print("Shape:", df.shape)
 
 #cantonal and municipal tax multipliers
 def load_cantonal_municipal_church_multipliers():
