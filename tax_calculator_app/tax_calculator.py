@@ -1,3 +1,5 @@
+#tax_calculator_app/tax_calculator.py
+
 # Importing libraries
 import streamlit as st
 import pandas as pd
@@ -19,7 +21,9 @@ import tax_calculations.total_income_tax as t
 tax_rates_federal = datasets.load_federal_tax_rates()
 tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
 tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
-communes = tax_multiplicators_cantonal_municipal["commune"].tolist()
+communal_multipliers = datasets.load_communal_multipliers_validated()
+communes = communal_multipliers["commune"].tolist()
+
 
 # Streamlit UI
 # Sidebar

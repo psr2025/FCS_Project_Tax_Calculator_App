@@ -101,9 +101,9 @@ def load_municipal_multipliers_api():
 
     with zipfile.ZipFile(zip_bytes) as z:
         file_list = z.namelist()
-        print("Files inside ZIP:")
-        for f in file_list:
-            print(" -", f)
+        #print("Files inside ZIP:")
+        #for f in file_list:
+            #print(" -", f)
 
         data_files = [
             name for name in file_list
@@ -114,23 +114,19 @@ def load_municipal_multipliers_api():
             raise ValueError("No data CSV found inside the ZIP.")
 
         data_csv_name = data_files[0]
-        print("Using data file:", data_csv_name)
+        #print("Using data file:", data_csv_name)
 
         with z.open(data_csv_name) as f:
             municipal_multipliers = pd.read_csv(f, sep=";", encoding="latin1")
         
     municipal_multipliers = municipal_multipliers[municipal_multipliers.iloc[:, 2].str.strip().str.lower()== "gemeindefinanzen rmsg"] # Filtering only rows that feature the current calculation standard (rmsg)
     municipal_multipliers = municipal_multipliers.iloc[:, [1, 8]] # selecting only relevant columns (commune name and municipal multiplier)
-    municipal_multipliers.columns = ["commune", "municipal_multiplier"] # renaming columns
+    municipal_multipliers.columns = ["commune", "commune_multiplier"] # renaming columns
+    municipal_multipliers.loc[municipal_multipliers["commune"] == "Stadt St.Gallen", "commune"] = "St. Gallen"
+    municipal_multipliers.loc[municipal_multipliers["commune"] == "St.Margrethen", "commune"] = "St. Margrethen"
     municipal_multipliers = municipal_multipliers.sort_values(by="commune")
 
     return municipal_multipliers
-
-
-if __name__ == "__main__":
-    df = load_municipal_multipliers_api()
-    print(df.head())
-    print("Shape:", df.shape)
 
 #cantonal and municipal tax multipliers
 def load_cantonal_municipal_church_multipliers():
@@ -152,6 +148,51 @@ def load_cantonal_municipal_church_multipliers():
     communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
 
     return tax_multiplicators_cantonal_municipal
+
+
+def load_communal_multipliers_validated():
+    """
+    Prefer municipal multipliers from the STADA2 API.
+    Fall back to local CSV if:
+      - the API fails, or
+      - any commune is missing a multiplier, or
+      - any multiplier differs (exact comparison).
+    Returns a DataFrame with columns ['commune', 'commune_multiplier'].
+    """
+
+    # Reference: CSV-based multipliers
+    base_df = load_cantonal_municipal_church_multipliers()
+    base_communal = base_df[["commune", "commune_multiplier"]].copy()
+
+    try:
+        # API-based multipliers (already cleaned, 2 columns)
+        api_communal = load_municipal_multipliers_api()
+
+        # Inner merge on commune
+        merged = base_communal.merge(
+            api_communal,
+            on="commune",
+            how="left",          # left = all CSV communes must be present in API
+            suffixes=("_csv", "_api")
+        )
+
+        # 2) Check for exact multiplier mismatches
+        mismatches = merged[
+            merged["commune_multiplier_csv"] != merged["commune_multiplier_api"]
+        ]
+        if not mismatches.empty:
+            print("[WARN] API multipliers differ from CSV → using CSV fallback.")
+            print(mismatches.head())
+            # print("CSV used")
+            return base_communal
+
+        print("API used")
+        return api_communal
+
+    except Exception as e:
+        print(f"[WARN] API municipal multipliers failed ({e}) → using CSV fallback.")
+        return base_communal
+
 #print(communes)
 
 #print(tax_multiplicators_cantonal_municipal.head(10))
