@@ -162,7 +162,10 @@ def main(n_samples=4000, seed=42):
     rows = []
     BIG = 50_000  # large value so deductions hit their legal maximum
 
-    for _ in range(n_samples):
+    for i in range(n_samples):
+        if i % 100 == 0:
+            print(f"Generated {i}/{n_samples} profiles...")
+
         profile = random_profile(rng)
 
         # ----- baseline tax -----
