@@ -1,4 +1,6 @@
-# Importing libraries
+# tax_calculations/federal_tax.py
+# 
+# # Importing libraries
 import pandas as pd
 
 ######################################
