@@ -1,4 +1,5 @@
 # data/constants.py
+#
 # Defining social deduction rates for employed and self-empleyed users as a share of gross income.
 # AHV - Old-Age & Survivors Insurance
 ahv_rate_employed = 0.0435
