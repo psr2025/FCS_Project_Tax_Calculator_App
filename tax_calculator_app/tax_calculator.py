@@ -255,13 +255,13 @@ if calc:
         # ML-based deduction opportunity recommender
         # -----------------------------------------------------------------
         if savings_models:
-            st.write("### Tax-saving opportunities")
+            st.write("### Tax-saving opportunities (ML-based)")
 
             # Build feature row exactly like in the training dataset
             features_for_ml = {
                 "income_gross": income_gross,
                 "age": age,
-                "employed": employed,  # bool
+                "employed": employed,  # bool, same as in dataset
                 "marital_status": marital_status_norm,
                 "is_two_income_couple": is_two_income_couple,  # bool
                 "number_of_children_under_7": number_of_children_under_7,
@@ -287,14 +287,14 @@ if calc:
                     pred = 0.0
                 raw_preds[key] = max(0.0, pred)  # no negative savings
 
-            # Friendly labels
+            # Human-readable labels
             friendly = {
                 "delta_3a": "Pillar 3a contributions",
                 "delta_childcare": "Childcare expenses (third-party)",
                 "delta_insurance": "Insurance premiums & savings interest",
             }
 
-            # Only show meaningful savings
+            # Only show “meaningful” savings
             threshold = 100.0  # CHF
             items = [
                 (friendly.get(k, k), v)
@@ -311,16 +311,65 @@ if calc:
                 # Sort by potential saving, descending
                 items.sort(key=lambda x: x[1], reverse=True)
 
+                # Build data for chart
+                chart_rows = []
                 for label, amount in items:
                     if amount > 2000:
-                        level = "High potential"
+                        level = "High"
                     elif amount > 500:
-                        level = "Medium potential"
+                        level = "Medium"
                     else:
-                        level = "Low potential"
+                        level = "Low"
+
+                    chart_rows.append(
+                        {
+                            "Deduction": label,
+                            "Estimated savings": amount,
+                            "Level": level,
+                            "Level_label": f"{level} potential",
+                        }
+                    )
+
+                chart_df = pd.DataFrame(chart_rows)
+
+                # Horizontal bar chart, colored by potential level
+                chart_df_sorted = chart_df.sort_values("Estimated savings")
+
+                fig = px.bar(
+                    chart_df_sorted,
+                    x="Estimated savings",
+                    y="Deduction",
+                    orientation="h",
+                    color="Level",
+                    color_discrete_map={
+                        "High": "green",
+                        "Medium": "yellow",
+                        "Low": "red",
+                    },
+                    labels={
+                        "Estimated savings": "Estimated savings (CHF)",
+                        "Deduction": "",
+                        "Level": "Potential level",
+                    },
+                    title="Estimated tax-saving potential by deduction",
+                )
+                fig.update_layout(
+                    xaxis_tickprefix="CHF ",
+                    height=300 + 40 * len(chart_df_sorted),
+                    margin=dict(l=10, r=10, t=40, b=40),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Text summary below the chart
+                for row in sorted(
+                    chart_rows, key=lambda r: r["Estimated savings"], reverse=True
+                ):
+                    label = row["Deduction"]
+                    amount = row["Estimated savings"]
+                    level = row["Level"]
 
                     st.write(
-                        f"- **{label}**: {level} – "
+                        f"- **{label}**: {level} potential – "
                         f"estimated savings up to **CHF {amount:,.0f}** "
                         f"if this deduction is fully used (subject to legal limits)."
                     )
@@ -329,3 +378,4 @@ if calc:
                 "ML-based saving recommendations are not available "
                 "(no trained models found)."
             )
+
