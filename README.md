@@ -77,7 +77,8 @@ FCS_Project_Tax_Calculator_App/
             - pip install -r requirements.txt
 
 5. Running the Application
-    - From the project root, run: streamlit run tax_calculator_app/tax_calculator.py
+    1. Open a terminal and navigate into the application folder: cd tax_calculator_app
+    2. run: streamlit run tax_calculator_app/tax_calculator.py
     - The app will start at: http://localhost:8501
 
 6. Machine Learning 
