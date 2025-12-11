@@ -6,40 +6,81 @@ import tax_calculations.canton_municipal_church_tax as can
 import tax_calculations.canton_base_tax as base
 
 
-# Calculation of total income tax
-# Combines direct federal tax, cantonal base tax, cantonal, municipal and church tax (via multipliers)
-# Returns a dictionary with all individual components and the total
+##################################################################################################
+
+### Calculate total income tax
+# Combining federal tax, cantonal base tax, cantonal, municipal, church taxes (via multipliers)
+# Returns dictionary with all tax segments and the total tax
 
 
 def calculation_total_income_tax(
-    tax_rates_federal,                      # pd.DataFrame, with federal (direct) income tax rates
-    tax_rates_cantonal,                     # pd.DataFrame, with cantonal base income tax rates
-    tax_multiplicators_cantonal_municipal,  # pd.DataFrame, with cantonal, municipal and church multipliers by commune.
-    marital_status,                         # str, ("single" or "married")
-    number_of_children,                     # int, total number of dependent children.
-    income_net_federal,                     # float, taxable income for federal tax (after deductions)
-    income_net_cantonal,                    # float, taxable income for cantonal tax (after deductions)
-    commune,                                # str, name of commune
-    church_affiliation                      # str or None, church affiliation in {"roman_catholic", "protestant", "christian_catholic"} or None
+    tax_rates_federal,                      # federal tax rate table (DataFrame)
+    tax_rates_cantonal,                     # cantonal base tax rate table (DataFrame)
+    tax_multiplicators_cantonal_municipal,  # multipliers for cantonal/municipal/church tax (DataFrame)
+    marital_status,                         # "single" or "married"
+    number_of_children,                     # total number of dependent children
+    income_net_federal,                     # taxable income after deductions (federal)
+    income_net_cantonal,                    # taxable income after deductions (cantonal)
+    commune,                                # commune used to look up multipliers
+    church_affiliation                      # church affiliation or None
     ):
-    
-    # calculates federal tax on net federal income by calling respective function 
-    federal_tax = fed.calculation_income_tax_federal(tax_rates_federal, marital_status=marital_status, number_of_children=number_of_children, income_net=income_net_federal)
+    """
+    Calculate total income tax for the taxpayer.
 
-    # calculates base cantonal tax (before multipliers) on net cantonal income by calling respective function 
-    base_income_tax_cantonal = base.calculation_income_tax_base_SG(tax_rates_cantonal, income_net_cantonal)
+    Function combines all tax layers used in St. Gallen:
+      - federal tax
+      - cantonal base tax
+      - cantonal, municipal and church tax (via multipliers)
 
-    # calculates cantonal + municipal + church tax by calling respective function and applying multipliers to the cantonal base tax
-    (total_canton_municipal_church, tax_canton, tax_commune, tax_church) = can.calculation_cantonal_municipal_church_tax(
+    Calls the backend tax modules, collects the individual tax components,
+    and returns all values rounded to two decimals.
+
+    Parameters:
+        tax_rates_federal (DataFrame): federal income tax rates  
+        tax_rates_cantonal (DataFrame): cantonal base income tax rates  
+        tax_multiplicators_cantonal_municipal (DataFrame): multipliers for cantonal/municipal/church tax  
+        marital_status (str): "single" or "married"  
+        number_of_children (int): number of dependent children  
+        income_net_federal (float): net taxable income at federal level  
+        income_net_cantonal (float): net taxable income at cantonal level  
+        commune (str): name of commune  
+        church_affiliation (str or None): church membership category  
+
+    Returns:
+        dict: rounded tax values for each component and the total income tax.
+    """
+
+    ### Federal tax calculation
+    federal_tax = fed.calculation_income_tax_federal(
+        tax_rates_federal,
+        marital_status=marital_status,
+        number_of_children=number_of_children,
+        income_net=income_net_federal
+    )
+
+    ### Cantonal base tax (before multipliers)
+    base_income_tax_cantonal = base.calculation_income_tax_base_SG(
+        tax_rates_cantonal,
+        income_net_cantonal
+    )
+
+    ### Cantonal + municipal + church tax (multipliers applied)
+    (
+        total_canton_municipal_church,
+        tax_canton,
+        tax_commune,
+        tax_church
+    ) = can.calculation_cantonal_municipal_church_tax(
         tax_multiplicators_cantonal_municipal,
         base_income_tax_cantonal,
         commune,
-        church_affiliation)
+        church_affiliation
+    )
 
-    # sums all tax categories to calculate total income tax
+    ### Sum all tax categories
     total_income_tax = federal_tax + total_canton_municipal_church
 
-    # create dictionary containing the individual tax category values and the total (values are still unrounded)
+    ### Create dictionary with unrounded values
     income_tax_unrounded = {
         "federal_tax": federal_tax,
         "cantonal_base_tax": base_income_tax_cantonal,
@@ -47,12 +88,10 @@ def calculation_total_income_tax(
         "municipal_tax": tax_commune,
         "church_tax": tax_church,
         "total_cantonal_municipal_church_tax": total_canton_municipal_church,
-        "total_income_tax": total_income_tax,
-    }
+        "total_income_tax": total_income_tax}
 
-    # create a new dictionary that contains the now rounded items of the previous dictionary 
-    income_tax = {key: round(value, 2) for key, value in income_tax_unrounded.items()} #round values
-    
-    # returns the rounded values of the individual tax category values and the total income tax burden
+    ### Create dictionary with rounded values
+    income_tax = {key: round(value, 2) for key, value in income_tax_unrounded.items()}
+
+    ### Return all individual categories + total income tax
     return income_tax
-
