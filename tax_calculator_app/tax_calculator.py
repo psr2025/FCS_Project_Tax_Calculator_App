@@ -1,6 +1,6 @@
 #tax_calculator_app/tax_calculator.py
 
-# Importing libraries
+# Import libraries
 import streamlit as st          # streamlit to create UI 
 import pandas as pd             # pandas for data handling
 import time                     # time used in loading/progress animation
