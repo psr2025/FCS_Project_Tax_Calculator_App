@@ -71,8 +71,10 @@ def load_cantonal_base_tax_rates():
     # Returns clean dataset 
     return tax_rates_cantonal
 
+
 # Municipal income tax multipliers SG (via API)
-# Downloads the STADA2 ZIP export, extracts the real data CSV (not the metadata file), returns it as pd DataFrame
+# Downloads the STADA2 ZIP export, extracts the real data CSV (not the metadata file)
+# Returns a pd DataFrame featuring commune name and corresponding income tax multipleir 
 def load_municipal_multipliers_api():
     # Defining download URL
     url = (
@@ -110,60 +112,69 @@ def load_municipal_multipliers_api():
             name for name in file_list
             if "meta" not in name.lower()
         ]
+        # Raise error if the file could not be retrieved 
         if not data_files:
             raise ValueError("No data CSV found inside the ZIP.")
 
+        # Assign proper file to variable 
         data_csv_name = data_files[0]
-        #print("Using data file:", data_csv_name)
-
+        
+        # Read in .csv file and save as DataFrame
         with z.open(data_csv_name) as f:
             municipal_multipliers = pd.read_csv(f, sep=";", encoding="latin1")
-        
-    municipal_multipliers = municipal_multipliers[municipal_multipliers.iloc[:, 2].str.strip().str.lower()== "gemeindefinanzen rmsg"] # Filtering only rows that feature the current calculation standard (rmsg)
-    municipal_multipliers = municipal_multipliers.iloc[:, [1, 8]] # selecting only relevant columns (commune name and municipal multiplier)
-    municipal_multipliers.columns = ["commune", "commune_multiplier"] # renaming columns
+
+    # Filtering only rows that feature the current calculation standard (rmsg)  
+    municipal_multipliers = municipal_multipliers[municipal_multipliers.iloc[:, 2].str.strip().str.lower()== "gemeindefinanzen rmsg"] 
+
+    # selecting only relevant columns (commune name and municipal multiplier)
+    municipal_multipliers = municipal_multipliers.iloc[:, [1, 8]] 
+    municipal_multipliers.columns = ["commune", "commune_multiplier"] # Renaming columns
+    
+    # Adjusting two individual commune names to match the format of another dataset 
     municipal_multipliers.loc[municipal_multipliers["commune"] == "Stadt St.Gallen", "commune"] = "St. Gallen"
     municipal_multipliers.loc[municipal_multipliers["commune"] == "St.Margrethen", "commune"] = "St. Margrethen"
+    
+    # Alphabetically sort communes
     municipal_multipliers = municipal_multipliers.sort_values(by="commune")
 
     return municipal_multipliers
 
-#cantonal and municipal tax multipliers
+
+# Cantonal, municipal, church tax multipliers
+# Loading and cleaning cantonal, municipal, church tax multiplier dataset
+# Returns clean dataset featuring commnues and their respective multipliers for those tax entities 
 def load_cantonal_municipal_church_multipliers():
-    tax_multiplicators_cantonal_municipal = pd.read_csv('data/2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # importing dataset.not selecting header row yet as there are duplicates in column titles
-    header_row = tax_multiplicators_cantonal_municipal.iloc[3] #select future header row and save it seperately
-    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # remove header & first rows from set
-    tax_multiplicators_cantonal_municipal.columns = header_row # properly assign header 
-    tax_multiplicators_cantonal_municipal.columns.values[4] = "canton_multiplier" #adding "multiplier" for easier understanding  
-    tax_multiplicators_cantonal_municipal.columns.values[5] = "commune_multiplier" #adding "multiplier" for easier understanding  
+    tax_multiplicators_cantonal_municipal = pd.read_csv('data/2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # Importing dataset.not selecting header row yet as there are duplicates in column titles
+    header_row = tax_multiplicators_cantonal_municipal.iloc[3] # Select future header row and save it seperately
+    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # Remove header & first rows from set
+    tax_multiplicators_cantonal_municipal.columns = header_row # Properly assign header 
+    tax_multiplicators_cantonal_municipal.columns.values[4] = "canton_multiplier" # Adding "multiplier" for easier understanding  
+    tax_multiplicators_cantonal_municipal.columns.values[5] = "commune_multiplier" # Adding "multiplier" for easier understanding  
 
-    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[:, 1:9]   # select relevant column range
-    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.drop(columns={'SFO Commune ID'}) #dropping irrelevant column 
+    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[:, 1:9]   # Select relevant column range
+    tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.drop(columns={'SFO Commune ID'}) # Dropping irrelevant column 
 
-    tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.lower() # headers: remove capitalization
-    tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") #adjusting headers
+    tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.lower() # Headers: remove capitalization
+    tax_multiplicators_cantonal_municipal.columns = tax_multiplicators_cantonal_municipal.columns.str.replace(",", "").str.replace(" ", "_") # Adjusting headers
 
-    tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_municipal.iloc[:, 2:].astype(float) #convering numeric columns to float
-
-    communes = tax_multiplicators_cantonal_municipal.iloc[:, 1]
+    tax_multiplicators_cantonal_municipal.iloc[:, 2:] = tax_multiplicators_cantonal_municipal.iloc[:, 2:].astype(float) # Convering numeric columns to float
 
     return tax_multiplicators_cantonal_municipal
 
 
+# Communal multiplier validation
+# We have imported municipal multipliers from both the STADA2 API and the .csv dataset 
+# We prefer to use data from STADA2 API, but fall back to the local .csv dataset if the API fails or a multiplier in the list differs between both sets 
+# Returns a DataFrame featuring the commune and its income tax multiplier 
+    
 def load_communal_multipliers_validated():
-    """
-    Prefer municipal multipliers from the STADA2 API.
-    Fall back to local CSV if:
-      - the API fails, or
-      - any commune is missing a multiplier, or
-      - any multiplier differs (exact comparison).
-    Returns a DataFrame with columns ['commune', 'commune_multiplier'].
-    """
+    
 
-    # Reference: CSV-based multipliers
+    # Assigning CSV-based multipliers as base 
     base_df = load_cantonal_municipal_church_multipliers()
     base_communal = base_df[["commune", "commune_multiplier"]].copy()
 
+    # Try to fetch data from API
     try:
         # API-based multipliers (already cleaned, 2 columns)
         api_communal = load_municipal_multipliers_api()
@@ -176,42 +187,45 @@ def load_communal_multipliers_validated():
             suffixes=("_csv", "_api")
         )
 
-        # 2) Check for exact multiplier mismatches
+        # Check for exact multiplier mismatches
         mismatches = merged[
             merged["commune_multiplier_csv"] != merged["commune_multiplier_api"]
         ]
-        if not mismatches.empty:
-            print("[WARN] API multipliers differ from CSV → using CSV fallback.")
-            print(mismatches.head())
-            # print("CSV used")
-            return base_communal
 
+        # If theres a mismatch print the head and return the .csv file 
+        if not mismatches.empty:
+            print(mismatches.head())
+            print("CSV used")
+            return base_communal
+        # Print that API was used and return the API dataset 
         print("API used")
         return api_communal
 
+    # Run exception should API fail -> return the base .csv dataset 
     except Exception as e:
-        print(f"[WARN] API municipal multipliers failed ({e}) → using CSV fallback.")
+        print(f"API municipal multipliers failed ({e}), using CSV instead.")
         return base_communal
 
-#print(communes)
+# Federal and cantonal tax deductions 
+# Loads federal or cantonal tax deduction tables depending on the input variable "tax_level". Their table layout is identical
+# Returns cleaned table featuring the deductions
 
-#print(tax_multiplicators_cantonal_municipal.head(10))
-
-#loads federal or cantonal tax deduction table. Their table layout is identical 
 def load_tax_deductions(tax_level):
+    # If the input varibale == "federal", reading federal .csv file and assinging it to variable. Otherwise do the same for the cantonal dataset
     if tax_level == "federal":
-        tax_deductions = pd.read_csv('data/2025_estv_deductions_federal.csv', sep=',') #importing federal dataset
+        tax_deductions = pd.read_csv('data/2025_estv_deductions_federal.csv', sep=',') # Importing federal dataset
     else:
-        tax_deductions  = pd.read_csv('data/2025_estv_deductions_SG.csv', sep=',') #importing cantonal dataset
+        tax_deductions  = pd.read_csv('data/2025_estv_deductions_SG.csv', sep=',') # Importing cantonal dataset
     
-    header_row = tax_deductions.iloc[3] 
-    tax_deductions = tax_deductions.iloc[4:]
-    tax_deductions.columns = header_row 
-    tax_deductions = tax_deductions.iloc[:, 1:8] 
-    tax_deductions.columns = tax_deductions.columns.str.lower().str.replace(" ", "_")
+    header_row = tax_deductions.iloc[3]         # Save row at index 3 to variable 
+    tax_deductions = tax_deductions.iloc[4:]    # Skip the first lines 
+    tax_deductions.columns = header_row         # Assign saved row as header row 
+    tax_deductions = tax_deductions.iloc[:, 1:8]  # Select relevant columns
+    tax_deductions.columns = tax_deductions.columns.str.lower().str.replace(" ", "_") # Adjust column titles 
     
-    tax_deductions["canton"] = tax_deductions["canton"].str.lower()
-    tax_deductions["type_of_tax"] = tax_deductions["type_of_tax"].str.lower()
+    # Convert columns to lowercase, replace '_' and ''', if applicable convert to float 
+    tax_deductions["canton"] = tax_deductions["canton"].str.lower()                             
+    tax_deductions["type_of_tax"] = tax_deductions["type_of_tax"].str.lower()                   
     tax_deductions["deduction"] = tax_deductions["deduction"].str.lower().str.replace(" ", "_")
     tax_deductions["amount"] = tax_deductions["amount"].str.replace("'", "").astype(float)
     tax_deductions["percent"] = tax_deductions["percent"].astype(float)
