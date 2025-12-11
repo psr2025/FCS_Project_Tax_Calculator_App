@@ -89,12 +89,14 @@ FCS_Project_Tax_Calculator_App/
         - The main application automatically loads these models.
 
 7. Data Sources
-    - Federal tax rates – ESTV 2025
-    - Cantonal tax rates SG – ESTV 2025
-    - Municipal multipliers – STADA2 API + fallback CSV
-    - Federal + Cantonal deduction tables – ESTV 2025
-
-    All datasets are located in tax_calculator_app/data/.
+    - ESTV: https://swisstaxcalculator.estv.admin.ch/#/taxdata
+        - Federal tax rates – ESTV 2025
+        - Cantonal tax rates SG – ESTV 2025
+        - Municipal multipliers SG - ESTV 2025
+        - Federal + Cantonal deduction tables – ESTV 2025
+    - STADA2 API: https://stada2.sg.ch/
+        - Municipal multipliers
+    - All datasets are located in tax_calculator_app/data/.
 
 8. Contribution Statement
     -The file contribution_matrix.pdf documents the distribution of work and contributions of all team members.
