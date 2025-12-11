@@ -257,34 +257,28 @@ if calc:
         # Display total as a metric
         st.metric(label="Your estimated total tax in 2025", value=f"CHF {total_tax:,.2f}")
 
-        # Build visualization dataframe and display a pie chart
+        ### Build visualization dataframe and display a pie chart
         # Format labels for visualization
         def change_key_format(s):
             return s.replace("_", " ").title()
-
         df_viz = pd.DataFrame({
             "component": [change_key_format(k) for k in visualization_components.keys()],
             "amount": list(visualization_components.values())
             })
 
+        # Create piechart 
+        fig = px.pie(
+            df_viz,
+            names="component",
+            values="amount",
+            title="Tax breakdown",
+            hole=0.3)
+        
+        # Style piechart labels 
+        fig.update_traces(textposition="inside", textinfo="percent")
 
-        try:
-            fig = px.pie(
-                df_viz,
-                names="component",
-                values="amount",
-                title="Tax breakdown",
-                hole=0.3,
-            )
-            fig.update_traces(textposition="inside", textinfo="percent")
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            st.warning(
-                "Interactive chart unavailable — showing numeric breakdown instead."
-            )
-            st.table(
-                df_viz.assign(amount=df_viz["amount"].map(lambda x: f"CHF {x:,.0f}"))
-            )
+        # Display piechart
+        st.plotly_chart(fig, use_container_width=True)
 
         # Print compact table of components
         st.write("### Tax breakdown")
@@ -292,131 +286,133 @@ if calc:
             label = k.replace("_", " ").capitalize()
             st.write(f"- **{label}**: CHF {v:,.0f} ({v/total_tax:.1%})")
 
+
+##################################################################################################
+
+
+        ### ML-based deduction opportunity recommender
     
+        # Create header 
+        st.write("### Tax-saving opportunities")
 
-        # -----------------------------------------------------------------
-        # ML-based deduction opportunity recommender
-        # -----------------------------------------------------------------
-        if savings_models:
-            st.write("### Tax-saving opportunities")
+        # Build feature row dictionary equivalent to the training dataset
+        features_for_ml = {
+            "income_gross": income_gross,
+            "age": age,
+            "employed": employed,  # bool, same as in dataset
+            "marital_status": marital_status_norm,
+            "is_two_income_couple": is_two_income_couple,  # bool
+            "number_of_children_under_7": number_of_children_under_7,
+            "number_of_children_7_and_over": number_of_children_7_and_over,
+            "number_of_children": number_of_children,
+            "commune": commune,
+            "church_affiliation": church_affiliation_norm or "none",
+            "contribution_pillar_3a": contribution_pillar_3a,
+            "total_insurance_expenses": total_insurance_expenses,
+            "travel_expenses_main_income": travel_expenses_main_income,
+            "child_care_expenses_third_party": child_care_expenses_third_party,
+            "taxable_assets": taxable_assets,
+            "child_education_expenses": child_education_expenses}
 
-            # Build feature row exactly like in the training dataset
-            features_for_ml = {
-                "income_gross": income_gross,
-                "age": age,
-                "employed": employed,  # bool, same as in dataset
-                "marital_status": marital_status_norm,
-                "is_two_income_couple": is_two_income_couple,  # bool
-                "number_of_children_under_7": number_of_children_under_7,
-                "number_of_children_7_and_over": number_of_children_7_and_over,
-                "number_of_children": number_of_children,
-                "commune": commune,
-                "church_affiliation": church_affiliation_norm or "none",
-                "contribution_pillar_3a": contribution_pillar_3a,
-                "total_insurance_expenses": total_insurance_expenses,
-                "travel_expenses_main_income": travel_expenses_main_income,
-                "child_care_expenses_third_party": child_care_expenses_third_party,
-                "taxable_assets": taxable_assets,
-                "child_education_expenses": child_education_expenses,
-            }
+        # Create DataFrame containing the features from the dictionary 
+        df_features = pd.DataFrame([features_for_ml])
 
-            df_features = pd.DataFrame([features_for_ml])
+        # Create empty dictionary for ML predictions
+        raw_preds = {}
 
-            raw_preds = {}
-            for key, model in savings_models.items():
-                try:
-                    pred = float(model.predict(df_features)[0])
-                except Exception:
-                    pred = 0.0
-                raw_preds[key] = max(0.0, pred)  # no negative savings
+        # Loop through ML models once per model 
+        for key, model in savings_models.items():
+            try:
+                # Try to predict potential savings if user maxed out the deduction 
+                # Returns a NumPy array which we convert to float 
+                pred = float(model.predict(df_features)[0])
+            except Exception:
+                pred = 0.0
+            # Prevent negative savings
+            raw_preds[key] = max(0.0, pred)  
 
-            # Human-readable labels
-            friendly = {
-                "delta_3a": "Pillar 3a contributions",
-                "delta_childcare": "Childcare expenses (third-party)",
-                "delta_insurance": "Insurance premiums & savings interest",
-            }
+        # Create dictionary with adjusted labels for each model 
+        models_adjusted = {
+            "delta_3a": "Pillar 3a contributions",
+            "delta_childcare": "Childcare expenses (third-party)",
+            "delta_insurance": "Insurance premiums & savings interest"}
 
-         
-            items = [
-                (friendly.get(k, k), v)
-                for k, v in raw_preds.items()
-            ]
-
-            if not items:
-                st.info(
-                    "The ML model does not see large additional saving potential "
-                    "from typical deduction levers for this profile."
-                )
-            else:
-                # Sort by potential saving, descending
-                items.sort(key=lambda x: x[1], reverse=True)
-
-                # Build data for chart
-                chart_rows = []
-                for label, amount in items:
-                    if amount > 2000:
-                        level = "High"
-                    elif amount > 500:
-                        level = "Medium"
-                    else:
-                        level = "Low"
-
-                    chart_rows.append(
-                        {
-                            "Deduction": label,
-                            "Estimated savings": amount,
-                            "Level": level,
-                            "Level_label": f"{level} potential",
-                        }
-                    )
-
-                chart_df = pd.DataFrame(chart_rows)
-
-                # Horizontal bar chart, colored by potential level
-                chart_df_sorted = chart_df.sort_values("Estimated savings")
-
-                fig = px.bar(
-                    chart_df_sorted,
-                    x="Estimated savings",
-                    y="Deduction",
-                    orientation="h",
-                    color="Level",
-                    color_discrete_map={
-                        "High": "green",
-                        "Medium": "yellow",
-                        "Low": "red",
-                    },
-                    labels={
-                        "Estimated savings": "Estimated savings (CHF)",
-                        "Deduction": "",
-                        "Level": "Potential level",
-                    },
-                    title="Estimated tax-saving potential by deduction",
-                )
-                fig.update_layout(
-                    xaxis_tickprefix="CHF ",
-                    height=300 + 40 * len(chart_df_sorted),
-                    margin=dict(l=10, r=10, t=40, b=40),
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Text summary below the chart
-                for row in sorted(
-                    chart_rows, key=lambda r: r["Estimated savings"], reverse=True
-                ):
-                    label = row["Deduction"]
-                    amount = row["Estimated savings"]
-                    level = row["Level"]
-
-                    st.write(
-                        f"- **{label}**: {level} potential – "
-                        f"estimated savings up to **CHF {amount:,.0f}** "
-                        f"if this deduction is fully used (subject to legal limits)."
-                    )
-        else:
+        # Create list of (label, value) pairs containing the adjusted labels from models_adjusted and prediction values from raw_preds
+        items = [
+            (models_adjusted.get(k, k), v)
+            for k, v in raw_preds.items()]
+        # Check that models were loaded / predictions were calculated
+        # Print Error message if this is not the case
+        if not items:
             st.info(
-                "ML-based saving recommendations are not available "
-                "(no trained models found)."
+                "The ML model does not see large additional saving potential "
+                "from typical deduction levers for this profile."
+                )
+        else:
+            # Sort by potential saving, descending
+            items.sort(key=lambda x: x[1], reverse=True)
+
+            # Build data for chart
+            chart_rows = []
+            for label, amount in items:
+                if amount > 2000:
+                    level = "High"
+                elif amount > 500:
+                    level = "Medium"
+                else:
+                    level = "Low"
+
+                chart_rows.append(
+                    {
+                        "Deduction": label,
+                        "Estimated savings": amount,
+                        "Level": level,
+                        "Level_label": f"{level} potential",
+                    }
+                )
+
+            chart_df = pd.DataFrame(chart_rows)
+
+            # Create orizontal bar chart, colored by potential level
+            chart_df_sorted = chart_df.sort_values("Estimated savings")
+
+            fig = px.bar(
+                chart_df_sorted,
+                x="Estimated savings",
+                y="Deduction",
+                orientation="h",
+                color="Level",
+                color_discrete_map={
+                    "High": "green",
+                    "Medium": "yellow",
+                    "Low": "red",
+                },
+                labels={
+                    "Estimated savings": "Estimated savings (CHF)",
+                    "Deduction": "",
+                    "Level": "Potential level",
+                },
+                title="Estimated tax-saving potential by deduction",
             )
 
+            # Adjust chart layout 
+            fig.update_layout(
+                xaxis_tickprefix="CHF ",
+                height=300 + 40 * len(chart_df_sorted),
+                margin=dict(l=10, r=10, t=40, b=40),
+            )
+            
+            # Show chart 
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Create text summary below the chart
+            for row in sorted(chart_rows, key=lambda r: r["Estimated savings"], reverse=True):
+                label = row["Deduction"]
+                amount = row["Estimated savings"]
+                level = row["Level"]
+
+                st.write(
+                    f"- **{label}**: {level} potential – "
+                    f"estimated savings up to **CHF {amount:,.0f}** "
+                    f"if this deduction is fully used (subject to legal limits).")
+       
