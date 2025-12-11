@@ -23,13 +23,13 @@ def calculation_total_income_tax(
     church_affiliation                      # str or None, church affiliation in {"roman_catholic", "protestant", "christian_catholic"} or None
     ):
     
-    # calculates federal tax by calling respective function 
+    # calculates federal tax on net federal income by calling respective function 
     federal_tax = fed.calculation_income_tax_federal(tax_rates_federal, marital_status=marital_status, number_of_children=number_of_children, income_net=income_net_federal)
 
-    # calculates base cantonal tax (before multipliers) by calling respective function 
+    # calculates base cantonal tax (before multipliers) on net cantonal income by calling respective function 
     base_income_tax_cantonal = base.calculation_income_tax_base_SG(tax_rates_cantonal, income_net_cantonal)
 
-    # calculates cantonal + municipal + church tax (after multipliers) by calling respective function
+    # calculates cantonal + municipal + church tax by calling respective function and applying multipliers to the cantonal base tax
     (total_canton_municipal_church, tax_canton, tax_commune, tax_church) = can.calculation_cantonal_municipal_church_tax(
         tax_multiplicators_cantonal_municipal,
         base_income_tax_cantonal,

@@ -1,15 +1,12 @@
 #tax_calculator_app/tax_calculator.py
 
 # Importing libraries
-import streamlit as st
-import pandas as pd
-import numpy as np
-import difflib
-import re
-import time
-import plotly.express as px
-import joblib
-import os
+import streamlit as st          # streamlit to create UI 
+import pandas as pd             # pandas for data handling
+import time                     # time used in loading/progress animation
+import plotly.express as px     # plotly used to create pie and bar charts 
+import joblib                   # loads ML-models 
+import os                       # builds file paths that work in multiple operating systems
 
 
 # Backend modules
@@ -18,78 +15,116 @@ import deductions.mandatory_deductions as md
 import deductions.optional_deductions as od
 import tax_calculations.total_income_tax as t
 
+
 ##################################################################################################
 
-# load datasets 
+
+### Load data
+
+# Load tax rate tables and multipliers used for all calculations
 tax_rates_federal = datasets.load_federal_tax_rates()
 tax_rates_cantonal = datasets.load_cantonal_base_tax_rates()
 tax_multiplicators_cantonal_municipal = datasets.load_cantonal_municipal_church_multipliers()
+
+# Load validated communal multipliers (API + CSV fallback)
 communal_multipliers = datasets.load_communal_multipliers_validated()
+
+# List of commune names for the dropdown
 communes = communal_multipliers["commune"].tolist()
 
-# ML models for deduction savings
+
+### Load ML models for deduction savings
 @st.cache_resource
 def load_savings_models():
-    model_names = ["delta_3a", "delta_childcare", "delta_insurance"]
-    models = {}
-    for name in model_names:
-        path = os.path.join("models", f"savings_{name}.pkl")
-        if os.path.exists(path):
-            models[name] = joblib.load(path)
+    '''Load pre-trained models that estimate potential tax savings for:
+      - Pillar 3a contributions
+      - Childcare expenses (third-party)
+      - Insurance premiums & savings interest
+    Models were trained offline and saved here:
+      models/savings_delta_3a.pkl
+      models/savings_delta_childcare.pkl
+      models/savings_delta_insurance.pkl'''
+
+    # Create empty dictionary
+    models = {}     
+
+    # Load individual models and save them in the dictionary                                                                  
+    models["delta_3a"] = joblib.load("models/savings_delta_3a.pkl")
+    models["delta_childcare"] = joblib.load("models/savings_delta_childcare.pkl")
+    models["delta_insurance"] = joblib.load("models/savings_delta_insurance.pkl")
+    
+    # Return the dictionary 
     return models
 
+# Load models once and reuse
 savings_models = load_savings_models()
 
 
-# Streamlit UI
-# Sidebar
+##################################################################################################
+
+
+### Streamlit UI
+# Create sidebar
 st.sidebar.success("Welcome to the St. Gallen tax calculator!")
 
-
-# Title and infobox
+# Add title and infobox
 st.title("🧮 St. Gallen Tax Calculator 2025")
-
 st.info("With this app you can calculate your income tax and find out where you have the potential of saving money by finding potential tax saving options!")
 
 # Input widgets for relevant user data
 with st.container():
     # Title personal data
     st.header("Input your personal data here")
-    # Input widgets
-    marital_status = st.selectbox("What is your martial status?", ("Single", "Married"), index=0)
 
-    is_two_income_couple = st.checkbox("Do both spouses earn income?", value=False)
+    ### Input widgets
+    # Select marital status from ("Single", "Married")
+    marital_status = st.selectbox("What is your marital status?", ("Single", "Married"), index=0)
+
+    # Only show two-income-couple option when married
+    if marital_status == "Married":
+        is_two_income_couple = st.checkbox("Do both spouses earn income?", value=False)
+    else:
+        is_two_income_couple = False
     
+    # Select age from slider
     age = st.slider("Age",  min_value=0, max_value=100, value=50, step=1)
     
+    # Select employment status employed vs. self-employed
     employed = st.selectbox("Are you employed or self-employed?", ("Employed", "Self-employed"), index=0)
     if employed == "Employed":
         employed = True
     else:
         employed = False
 
-    
+    # Select commune from commune list 
     commune = st.selectbox("Municipality / commune", options=communes, index=0)
-     
     
+    # Select church affiliation from list 
     church_affiliation = st.selectbox("What is your confession?", ("Roman Catholic", "Protestant", "Christian Catholic", "Other/None"), index=3)
 
-
-    # Inputs income
+    ### Input income section
+    # Create header
     st.header("Input your income data here")
+
+    # Get gross income 
     income_gross = st.number_input("Gross income 2025 in CHF", min_value=0, value=0, step=5000, help="Enter your annual gross income in CHF")
     
+    # Get taxable assets
     taxable_assets = st.number_input("Taxable assets in CHF", min_value=0, value=0, step=1000)
 
 
-    # Inputs deductions
-    st.header("Input your deductions here")
+    ### Inputs deductions
+    # Create header
+    st.header("Input your deductions here") 
+
+    # Create nuber inputs for deduction categories 
     contribution_pillar_3a = st.number_input("Pillar 3a contribution in CHF", min_value=0, value=0, step=100)
     total_insurance_expenses = st.number_input("Insurance premiums & savings interest in CHF", min_value=0, value=0, step=100)
     travel_expenses_main_income = st.number_input("Commuting / travel expenses in CHF", min_value=0, value=0, step=10)
     child_care_expenses_third_party = st.number_input("Childcare paid to third parties in CHF", min_value=0, value=0, step=10)
     
-    # Children select + popups
+    ### Select and input children data
+    # If there are children, the user is further asked about their ages as this is relevant for deductions
     children = st.selectbox("Children?", ("No", "Yes"))
     if children == "Yes":
         with st.expander("Child data"):
@@ -100,10 +135,11 @@ with st.container():
         number_of_children_under_7 = 0
         number_of_children_7_and_over = 0
         number_of_children = 0
-
+    
+    # Create number input for child expenses 
     child_education_expenses = st.number_input("Child education expenses in CHF", min_value=0, value=0, step=10)
 
-# Button to trigger calculation
+# Create button to trigger calculation
 calc = st.button("Calculate", type="primary")
 
 # Loading bar animation
@@ -120,13 +156,17 @@ if calc:
     placeholder.progress(100, "Calculation complete!")
     time.sleep(1)
 
+
 ###########################################################################################
-# Tax calculation
+
+
+### Tax calculation
 
 # Determine deductions
 if calc:
     # normalize inputs to match backend expectations
     marital_status_norm = "married" if marital_status.lower().startswith("m") else "single"
+
     # map church affiliation to backend expected values
     church_map = {
         "Roman Catholic": "roman_catholic",
