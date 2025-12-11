@@ -12,6 +12,20 @@ import io
 # Federal income tax 
 # Loads and cleans federal income tax rate dataset, returns clean dataset 
 def load_federal_tax_rates():
+    """
+    Load and clean the federal income tax rate dataset.
+
+    This function:
+      - imports the raw ESTV federal tax CSV,
+      - applies the correct header row,
+      - cleans and standardizes column names,
+      - splits marital status / children information,
+      - converts numeric fields,
+      - drops irrelevant metadata columns.
+
+    Returns:
+        pd.DataFrame: cleaned federal tax rate table.
+    """
     tax_rates_federal = pd.read_csv('data/2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # Imports the set and skips the first rows (empty)
 
     tax_rates_federal.columns = tax_rates_federal.iloc[0] # Selecting row that will hold column titles
@@ -50,6 +64,20 @@ def load_federal_tax_rates():
 # Cantonal income tax
 # Loading and cleaning cantonal tax rate set SG, returns clean dataset 
 def load_cantonal_base_tax_rates():
+    '''
+    Load and clean the St. Gallen cantonal base income tax rate dataset.
+
+    Steps:
+      - import the raw ESTV CSV,
+      - strip metadata rows,
+      - standardize column names,
+      - convert numeric values,
+      - drop unused metadata columns.
+
+    Returns:
+        pd.DataFrame: cleaned cantonal income tax table.
+    '''
+        
     tax_rates_cantonal = pd.read_csv('data/2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # Imports the set and skips the first rows (empty)
 
     tax_rates_cantonal.columns = tax_rates_cantonal.iloc[0] # Selecting row that will hold column titles
@@ -76,6 +104,20 @@ def load_cantonal_base_tax_rates():
 # Downloads the STADA2 ZIP export, extracts the real data CSV (not the metadata file)
 # Returns a pd DataFrame featuring commune name and corresponding income tax multipleir 
 def load_municipal_multipliers_api():
+    """
+    Download and load municipal income tax multipliers using the STADA2 API.
+
+    This function:
+      - retrieves a ZIP containing indicator data,
+      - extracts the correct CSV (ignoring metadata files),
+      - filters rows matching the valid indicator standard,
+      - selects and renames the commune + multiplier columns,
+      - normalizes naming inconsistencies.
+
+    Returns:
+        pd.DataFrame: municipal income tax multipliers for St. Gallen communes.
+    """
+
     # Defining download URL
     url = (
         "https://stada2.sg.ch/webapp/gpsg/GPSG"
@@ -144,6 +186,18 @@ def load_municipal_multipliers_api():
 # Loading and cleaning cantonal, municipal, church tax multiplier dataset
 # Returns clean dataset featuring commnues and their respective multipliers for those tax entities 
 def load_cantonal_municipal_church_multipliers():
+    """
+    Load and clean the combined canton/commune/church tax multiplier table.
+
+    Includes:
+      - extracting correct header row,
+      - removing metadata columns,
+      - normalizing header names,
+      - converting multiplier fields to numeric.
+
+    Returns:
+        pd.DataFrame: cleaned tax multiplier dataset.
+    """
     tax_multiplicators_cantonal_municipal = pd.read_csv('data/2025_estv_tax_multipliers_sg.csv', sep=',', header=None) # Importing dataset.not selecting header row yet as there are duplicates in column titles
     header_row = tax_multiplicators_cantonal_municipal.iloc[3] # Select future header row and save it seperately
     tax_multiplicators_cantonal_municipal = tax_multiplicators_cantonal_municipal.iloc[4:]  # Remove header & first rows from set
@@ -168,7 +222,19 @@ def load_cantonal_municipal_church_multipliers():
 # Returns a DataFrame featuring the commune and its income tax multiplier 
     
 def load_communal_multipliers_validated():
-    
+    """
+    Validate and return the final municipal income tax multiplier table.
+
+    Logic:
+      - Load the CSV-based baseline multipliers.
+      - Attempt retrieving API-based multipliers.
+      - Compare values:
+          → If mismatched or API fails, fall back to CSV.
+          → Otherwise, trust the API output.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ["commune", "commune_multiplier"].
+    """
 
     # Assigning CSV-based multipliers as base 
     base_df = load_cantonal_municipal_church_multipliers()
@@ -211,6 +277,21 @@ def load_communal_multipliers_validated():
 # Returns cleaned table featuring the deductions
 
 def load_tax_deductions(tax_level):
+    """
+    Load and clean the federal or cantonal tax deduction tables.
+
+    Steps:
+      - choose correct source file based on 'tax_level',
+      - extract the correct header row,
+      - normalize and clean string fields,
+      - convert numeric fields (amount, min, max, percent).
+
+    Parameters:
+        tax_level (str): "federal": load federal table, otherwise load cantonal.
+
+    Returns:
+        pd.DataFrame: cleaned tax deduction dataset.
+    """
     # If the input varibale == "federal", reading federal .csv file and assinging it to variable. Otherwise do the same for the cantonal dataset
     if tax_level == "federal":
         tax_deductions = pd.read_csv('data/2025_estv_deductions_federal.csv', sep=',') # Importing federal dataset
