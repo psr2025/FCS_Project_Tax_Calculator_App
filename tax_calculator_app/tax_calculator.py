@@ -255,7 +255,7 @@ if calc:
         # ML-based deduction opportunity recommender
         # -----------------------------------------------------------------
         if savings_models:
-            st.write("### Tax-saving opportunities (ML-based)")
+            st.write("### Tax-saving opportunities")
 
             # Build feature row exactly like in the training dataset
             features_for_ml = {
@@ -294,12 +294,10 @@ if calc:
                 "delta_insurance": "Insurance premiums & savings interest",
             }
 
-            # Only show “meaningful” savings
-            threshold = 100.0  # CHF
+         
             items = [
                 (friendly.get(k, k), v)
                 for k, v in raw_preds.items()
-                if v >= threshold
             ]
 
             if not items:
