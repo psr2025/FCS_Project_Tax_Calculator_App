@@ -4,48 +4,90 @@
 import pandas as pd
 
 
-# Calculation federal tax
-# Calculates the federal taxes on net federal income according to users' inputs 
-# Calculation adds fixed base tax for the relevant income bracket to the marginal tax applied to income above the bracket threshold
+##################################################################################################
+### Helper: map marital status + children to correct federal tax class
+# Federal tax treats married persons and single parents as equivalent 
 
-# Integrating married users and single users with kids into one federal tax class as they are treated equivalent 
+
 def map_marital_status_and_children_for_federal_tax(marital_status, number_of_children):
+    """
+    Map user inputs (marital status + number of children) to the correct 
+    federal tax class used in the tax rate table.
+
+    On federal level, married taxpayers and single taxpayers with children
+    both fall under the same tax class: "married/single"
+    
+    Parameters:
+        marital_status (str): "single" or "married"
+        number_of_children (int): number of dependent children
+
+    Returns:
+        str: "married/single" or "single"
+    """
     if number_of_children > 0 or marital_status == "married":
         return "married/single"
     else:
         return "single"
-    
-### Computing federal income tax
+
+
+##################################################################################################
+
+### Federal income tax calculation
+# Computes base tax for the income bracket + marginal tax * taxable excess above the bracket threshold
+
 
 def calculation_income_tax_federal(tax_rates_federal, marital_status, number_of_children, income_net):
-    # Map inputs to table keys
-    marital_status_children_key = map_marital_status_and_children_for_federal_tax(marital_status, number_of_children)
+    """
+    Calculates federal income tax on federal net income.
 
-    # Filter and copy relevant rows
+    Uses official federal tax rate table, selects the correct tax row 
+    based on marital status and number of children, and computes:
+
+        federal tax = base amount of bracket 
+                     + (income above bracket threshold * marginal tax rate)
+
+    Parameters:
+        tax_rates_federal (DataFrame): federal income tax rate table
+        marital_status (str): "single" or "married"
+        number_of_children (int): number of dependent children
+        income_net (float): net taxable income after deductions
+
+    Returns:
+        float: total calculated federal income tax (unrounded)
+    """
+
+    ### Map user inputs to correct federal tax class
+    marital_status_children_key = map_marital_status_and_children_for_federal_tax(
+        marital_status,
+        number_of_children
+    )
+
+    ### Filter tax table to the relevant rows
     df = tax_rates_federal[
         (tax_rates_federal["tax_type"] == "Income tax")
         & (tax_rates_federal["tax_authority"] == "Federal tax")
         & (tax_rates_federal["marital_status"] == marital_status_children_key)
-            ].copy()
+    ].copy()
 
-    # Handling income below minimum 
+    ### Handle income below minimum taxable bracket
     if income_net <= df["net_income"].min():
         row = df.iloc[0]
         return row["base_amount_CHF"]
 
-    # Select last row with net_income (column name) <= income_net 
-    # (derived from user input, selects the row where user net income does not yet breach the treshold of the next tax bracket)
+    ### Select the correct tax bracket:
+    # choose the last bracket for which net_income_threshold ≤ income_net
     row = df[df["net_income"] <= income_net].iloc[-1]
 
-    # Assign relevant values to variables 
+    ### Extract row values
     base_amount_chf = row["base_amount_CHF"]
     threshold_net_income = row["net_income"]
-    federal_tax_rate = row["additional_%"]  
+    federal_tax_rate = row["additional_%"]
 
-    # Calculate the taxable excess over the threshold income for the tax bracket 
+    ### Calculate income above the bracket threshold
     taxable_excess = income_net - threshold_net_income
 
-    # Calculate the total federal income tax by adding the product of excess net income and federal tax rate to the base amount of the relevant tax bracket
+    ### Compute total federal tax:
+    # base amount + marginal tax applied to the excess income
     income_tax_federal = base_amount_chf + (taxable_excess * (federal_tax_rate / 100.0))
 
     return income_tax_federal
