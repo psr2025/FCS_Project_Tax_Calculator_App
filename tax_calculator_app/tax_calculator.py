@@ -157,7 +157,7 @@ if calc:
     time.sleep(1)
 
 
-###########################################################################################
+##################################################################################################
 
 
 ### Tax calculation
@@ -176,12 +176,14 @@ if calc:
     }
     church_affiliation_norm = church_map.get(church_affiliation, None)
 
-    # Mandatory deductions
+    # Calculate mandatory deductions 
+    # through functions in deductions/mandatory_deductions.py
     social_deductions_total = md.get_total_social_deductions(income_gross, employed)
     bv_minimal_contribution = md.get_mandatory_pension_contribution(income_gross, age)
     total_mandatory_deductions = md.get_total_mandatory_deductions(income_gross, age, employed)
 
-    # Optional deductions - federal
+    # Calculate optional deductions - federal 
+    # through function in deductions/optional_deductions.py
     federal_optional_deductions = od.calculate_federal_optional_deductions(
         income_gross,
         employed,
@@ -194,7 +196,8 @@ if calc:
     )
     total_optimal_deduction_federal = federal_optional_deductions.get("total_federal_optional_deductions", 0)
 
-    # Optional deductions - cantonal
+    # Calculate optional deductions - cantonal 
+    # through function in deductions/optional_deductions.py
     cantonal_optional_deduction = od.calculate_cantonal_optional_deductions(
         income_gross,
         employed,
@@ -212,12 +215,11 @@ if calc:
     )
     total_optional_deduction_cantonal = cantonal_optional_deduction.get("total_cantonal_optional_deductions", 0)
 
-    # net incomes
+    # Net income calculation on federal and cantonal level
     income_net_federal = income_gross - (total_mandatory_deductions + total_optimal_deduction_federal)
     income_net_cantonal = income_gross - (total_mandatory_deductions + total_optional_deduction_cantonal)
 
-
-    # compute taxes
+    # Compute various tax categories through the function within tax_calculations/total_income_tax.py
     income_tax_dictionary = t.calculation_total_income_tax(
         tax_rates_federal,
         tax_rates_cantonal,
@@ -230,40 +232,41 @@ if calc:
         church_affiliation=church_affiliation_norm,
     )
 
-###########################################################################
+
+##################################################################################################
 
     # Show results in the app 
 
-    # We only want these four components in the breakdown:
+    # We only want these four tax categories in the breakdown:
     component_keys = ["federal_tax", "cantonal_tax", "municipal_tax", "church_tax"]
 
-    # Build dict with just those four
-    viz_components = {
+    # Build dictionary 
+    visualization_components = {
         key: float(income_tax_dictionary.get(key, 0.0))
         for key in component_keys
         if float(income_tax_dictionary.get(key, 0.0)) > 0
     }
 
-    if not viz_components:
+    # Making sure dictionary is not empty
+    if not visualization_components:
         st.error("Are your inputs correct?")
     else:
-        # Total tax is the sum of those four components
-        # (this should equal income_tax_dictionary["total_income_tax"])
-        total_tax = sum(viz_components.values())
+        # Total tax is the sum of those four components, this should equal income_tax_dictionary["total_income_tax"]
+        total_tax = sum(visualization_components.values())
 
         # Display total as a metric
-        st.metric(
-            label="Your estimated total tax in 2025",
-            value=f"CHF {total_tax:,.2f}",
-        )
+        st.metric(label="Your estimated total tax in 2025", value=f"CHF {total_tax:,.2f}")
 
         # Build visualization dataframe and display a pie chart
-        df_viz = pd.DataFrame(
-            {
-                "component": list(viz_components.keys()),
-                "amount": list(viz_components.values()),
-            }
-        )
+        # Format labels for visualization
+        def change_key_format(s):
+            return s.replace("_", " ").title()
+
+        df_viz = pd.DataFrame({
+            "component": [change_key_format(k) for k in visualization_components.keys()],
+            "amount": list(visualization_components.values())
+            })
+
 
         try:
             fig = px.pie(
@@ -285,7 +288,7 @@ if calc:
 
         # Print compact table of components
         st.write("### Tax breakdown")
-        for k, v in viz_components.items():
+        for k, v in visualization_components.items():
             label = k.replace("_", " ").capitalize()
             st.write(f"- **{label}**: CHF {v:,.0f} ({v/total_tax:.1%})")
 
