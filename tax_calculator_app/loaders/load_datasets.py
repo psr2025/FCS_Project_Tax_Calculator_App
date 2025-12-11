@@ -1,7 +1,6 @@
-# /loaders/load_datasets.py
-# loading and cleaning the datasets
+# loaders/load_datasets.py
 
-#import libraries
+# Import libraries
 import pandas as pd
 import requests 
 from io import StringIO
@@ -9,12 +8,13 @@ import urllib3
 import zipfile
 import io
 
-###import datasets as csv
-#loads and cleans federal income tax rate dataset
+### Import datasets as csv
+# Federal income tax 
+# Loads and cleans federal income tax rate dataset, returns clean dataset 
 def load_federal_tax_rates():
-    tax_rates_federal = pd.read_csv('data/2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+    tax_rates_federal = pd.read_csv('data/2025_estv_tax_rates_confederation.csv', sep=',', skiprows=4) # Imports the set and skips the first rows (empty)
 
-    tax_rates_federal.columns = tax_rates_federal.iloc[0] #selecting row that will hold column titles
+    tax_rates_federal.columns = tax_rates_federal.iloc[0] # Selecting row that will hold column titles
     tax_rates_federal = tax_rates_federal.rename(columns={
         "Type of tax": "tax_type",
         "Taxable entity": "taxable_entity",
@@ -22,64 +22,59 @@ def load_federal_tax_rates():
         "Taxable income for federal tax": "net_income",
         "Additional %": "additional_%",
         "Base amount CHF": "base_amount_CHF"
-    }) #renaming column titles
+    }) # Renaming column titles
 
-    tax_rates_federal = tax_rates_federal[1:] #delete old titles
-    tax_rates_federal = tax_rates_federal.loc[:, tax_rates_federal.columns.notna()] #delete empty columns
-    tax_rates_federal = tax_rates_federal.drop(columns=["Canton ID", "Canton"]) #delete irrelevant columns
-    tax_rates_federal["net_income"] = tax_rates_federal["net_income"].str.replace("'", "").astype(float) #deleting "'" in the net income column and converting to float 
-    tax_rates_federal["base_amount_CHF"] = tax_rates_federal["base_amount_CHF"].str.replace("'", "").astype(float) #deleting "'" in the base_amount_CHF column and converting to float 
+    tax_rates_federal = tax_rates_federal[1:]                                       # Delete old titles
+    tax_rates_federal = tax_rates_federal.loc[:, tax_rates_federal.columns.notna()] # Delete empty columns
+    tax_rates_federal = tax_rates_federal.drop(columns=["Canton ID", "Canton"])     # Delete irrelevant columns
+    tax_rates_federal["net_income"] = tax_rates_federal["net_income"].str.replace("'", "").astype(float)            # Deleting "'" in the net income column and converting to float 
+    tax_rates_federal["base_amount_CHF"] = tax_rates_federal["base_amount_CHF"].str.replace("'", "").astype(float)  # Deleting "'" in the base_amount_CHF column and converting to float 
     split_taxable_entity = tax_rates_federal["taxable_entity"].str.split(",", expand=True)
 
-    #splitting up taxable_entity column into two columns "marital status" and "childern". 
+    # Splitting up taxable_entity column into two columns "marital status" and "childern"
     column_index = tax_rates_federal.columns.get_loc("taxable_entity")
     for i, col in enumerate(split_taxable_entity.columns):
         tax_rates_federal.insert(column_index + i, col, split_taxable_entity[col])
     tax_rates_federal.rename(columns={0: "marital_status", 1: "children"}, inplace=True)
 
-    tax_rates_federal = tax_rates_federal.drop(columns=["taxable_entity"]) #drop old taxable entity column 
+    tax_rates_federal = tax_rates_federal.drop(columns=["taxable_entity"]) # Drop old taxable entity column 
 
-    tax_rates_federal["children"] = tax_rates_federal["children"].str.replace("no children", "no").str.replace("with children", "yes") #renaming child column values to yes / no 
+    tax_rates_federal["children"] = tax_rates_federal["children"].str.replace("no children", "no").str.replace("with children", "yes") # Renaming child column values to yes / no 
     tax_rates_federal["marital_status"] = tax_rates_federal["marital_status"].str.lower()
 
-    tax_rates_federal.iloc[:, 4:] = tax_rates_federal.iloc[:, 4:].astype(float)
+    tax_rates_federal.iloc[:, 4:] = tax_rates_federal.iloc[:, 4:].astype(float) # Convert columns to float 
 
     return tax_rates_federal
 
-#print(tax_rates_federal.head(100))
 
-
-#cantonal income tax
-#loading and cleaning cantonal tax rate set SG
+# Cantonal income tax
+# Loading and cleaning cantonal tax rate set SG, returns clean dataset 
 def load_cantonal_base_tax_rates():
-    tax_rates_cantonal = pd.read_csv('data/2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # imports the set and skips the first rows (empty)
+    tax_rates_cantonal = pd.read_csv('data/2025_estv_tax_rates_sg.csv', sep=',', skiprows=4) # Imports the set and skips the first rows (empty)
 
-    tax_rates_cantonal.columns = tax_rates_cantonal.iloc[0] #selecting row that will hold column titles
-    tax_rates_cantonal = tax_rates_cantonal[1:] #delete old titles
-    tax_rates_cantonal = tax_rates_cantonal.loc[:, tax_rates_cantonal.columns.notna()]
-    tax_rates_cantonal = tax_rates_cantonal.rename(columns={
+    tax_rates_cantonal.columns = tax_rates_cantonal.iloc[0] # Selecting row that will hold column titles
+    tax_rates_cantonal = tax_rates_cantonal[1:]             # Delete old titles
+    tax_rates_cantonal = tax_rates_cantonal.loc[:, tax_rates_cantonal.columns.notna()]  # Drop NaN columns
+    tax_rates_cantonal = tax_rates_cantonal.rename(columns={                            
         "Type of tax": "tax_type",
         "Taxable entity": "taxable_entity",
         "Tax authority": "tax_authority",
         "For the next CHF": "for_the_next_amount_CHF",
         "Additional %": "additional_%"
-    }) #renaming column titles
+    }) # Renaming column titles
 
-    tax_rates_cantonal = tax_rates_cantonal.drop(columns=["Canton ID"]) #delete irrelevant columns
-    tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "") #deleting "'" in the for_the_next_amount_CHF column and converting to float 
+    tax_rates_cantonal = tax_rates_cantonal.drop(columns=["Canton ID"]) # Delete irrelevant columns
+    tax_rates_cantonal["for_the_next_amount_CHF"] = tax_rates_cantonal["for_the_next_amount_CHF"].str.replace("'", "") # Deleting "'" in the for_the_next_amount_CHF column and converting to float 
 
-    tax_rates_cantonal.iloc[:, 4:] = tax_rates_cantonal.iloc[:, 4:].astype(float) #converting numeric columns to float 
+    tax_rates_cantonal.iloc[:, 4:] = tax_rates_cantonal.iloc[:, 4:].astype(float) # Converting numeric columns to float 
 
+    # Returns clean dataset 
     return tax_rates_cantonal
-#print(tax_rates_cantonal.head(100))
 
-
+# Municipal income tax multipliers SG (via API)
+# Downloads the STADA2 ZIP export, extracts the real data CSV (not the metadata file), returns it as pd DataFrame
 def load_municipal_multipliers_api():
-    """
-    Downloads the STADA2 ZIP export, extracts the real data CSV
-    (not the metadata file), and returns it as a pandas DataFrame.
-    """
-
+    # Defining download URL
     url = (
         "https://stada2.sg.ch/webapp/gpsg/GPSG"
         "?type=EXPORT"
@@ -94,21 +89,26 @@ def load_municipal_multipliers_api():
         "&export=CSV"
     )
 
+    # Send GET request to URL and assign the response to variable 
+    # Set verify to False as we otherwise run into certificate issues 
+    # Response is a .zip file that includes two other files; one of them is the dataset relevant to us
     response = requests.get(url, verify=False)
+
+    # Check if the request returned an error, if yes it stops the function 
     response.raise_for_status()
 
+    # Converts response into memory buffer to treat .zip file without saving it to disk 
     zip_bytes = io.BytesIO(response.content)
 
+    # Open .zip file in memory 
     with zipfile.ZipFile(zip_bytes) as z:
+        # List all files in the .zip file 
         file_list = z.namelist()
-        #print("Files inside ZIP:")
-        #for f in file_list:
-            #print(" -", f)
 
+        # Filter for the relevant file, iterate through files and keep only the one that doesn't have "meta" in the file name 
         data_files = [
             name for name in file_list
-            if name.lower().endswith(".csv")
-            and "meta" not in name.lower()
+            if "meta" not in name.lower()
         ]
         if not data_files:
             raise ValueError("No data CSV found inside the ZIP.")
