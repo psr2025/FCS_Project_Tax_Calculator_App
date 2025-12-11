@@ -16,7 +16,19 @@ import loaders.load_datasets as ld
 
 ### Helper functions
 def get_row_by_keyword(df, keyword):
-    '''Return first row in df where the "deduction" column contains the keyword.'''
+    '''
+    Return the first row in the deduction table where the 'deduction'
+    column contains the given keyword.
+
+    Helper used to locate the correct deduction rule
+    (e.g. travel expenses, insurance, pillar 3a) based on its name.
+
+    Parameters:
+        df (pd.DataFrame): deduction table with a 'deduction' column.
+        keyword (str): substring to search for in the 'deduction' column.
+
+    Returns:
+        pd.Series: the first matching row.'''
 
     # Create mask that is True where the deduction string contains the keyword
     mask = df["deduction"].str.contains(keyword, case=False, na=False)
@@ -26,7 +38,21 @@ def get_row_by_keyword(df, keyword):
 
 
 def cap_to_min_max(amount: float, minimum: float, maximum: float) -> float:
-    '''Cap a numeric value between a minimum and maximum bound (if > 0).'''
+    """
+    Cap a numeric value between a given minimum and maximum bound.
+
+    If bound is set to 0 or below, its treated as "no bound" and
+    ignored for the capping. Used for applying legal min/max deduction
+    limits from the ESTV deduction tables.
+
+    Parameters:
+        amount (float): original value to be capped.
+        minimum (float): lower bound (only enforced if > 0).
+        maximum (float): upper bound (only enforced if > 0).
+
+    Returns:
+        float: value constrained between minimum and maximum (where defined).
+    """
     
     value = amount
     # If a positive minimum is defined, enforce it
@@ -54,7 +80,34 @@ def calculate_federal_optional_deductions(
     travel_expenses_main_income: float = 0.0,
     child_care_expenses_third_party: float = 0.0,
 ):
-    '''Calculate federal optional deductions based on ESTV deduction table.'''
+    '''
+    Calculate federal-level optional deductions based on ESTV deduction table.
+
+    This function applies federal deduction rules for:
+      - travel expenses (main income)
+      - insurance premiums & savings interest (adults and children)
+      - pillar 3a contributions
+      - child deduction
+      - married-person deduction
+      - childcare expenses paid to third parties
+
+    Reads the official ESTV deduction CSV (via load_tax_deductions),
+    picks the correct rows depending on marital status and pension/3a
+    situation, and returns a breakdown of all federal optional deductions.
+
+    Parameters:
+        income_gross (float): gross income before any deductions.
+        employed (bool): True if employed, False if self-employed.
+        marital_status (str): "single" or "married".
+        number_of_children (int): number of dependent children.
+        contribution_pillar_3a (float): user-entered pillar 3a contributions.
+        total_insurance_expenses (float): total insurance premiums & savings interest.
+        travel_expenses_main_income (float): commuting/travel expenses for main income.
+        child_care_expenses_third_party (float): childcare expenses to third parties.
+
+    Returns:
+        dict: individual deduction components and "total_federal_optional_deductions".
+    '''
 
     # Load federal deduction table via loaders/load_datasets.py
     tax_deductions_federal = ld.load_tax_deductions(tax_level="federal")
@@ -170,7 +223,37 @@ def calculate_cantonal_optional_deductions(
     number_of_children_under_7: int = 0,
     number_of_children_7_and_over: int = 0,
 ):
-    '''Calculate cantonal optional deductions for St. Gallen based on ESTV deduction table.'''
+    '''
+    Calculate cantonal optional deductions for the canton of St. Gallen.
+
+    This function uses the cantonal ESTV deduction table to compute:
+      - travel expense deductions
+      - insurance & savings interest (adults + children)
+      - pillar 3a deductions (cantonal limit)
+      - two-income household deduction
+      - asset management cost deduction
+      - childcare expenses paid to third parties
+      - child education cost deduction
+      - age-based child deductions (< 7 and ≥ 7)
+
+    Parameters:
+        income_gross (float): gross income before deductions.
+        employed (bool): True if employed, False if self-employed.
+        marital_status (str): "single" or "married".
+        number_of_children (int): total number of dependent children.
+        contribution_pillar_3a (float): user-entered pillar 3a contributions.
+        total_insurance_expenses (float): total insurance premiums and savings interest.
+        travel_expenses_main_income (float): commuting/travel expenses for main income.
+        child_care_expenses_third_party (float): childcare expenses paid to third parties.
+        is_two_income_couple (bool): True for two-income married couples.
+        taxable_assets (float): taxable assets (e.g. securities).
+        child_education_expenses (float): total child education costs per year.
+        number_of_children_under_7 (int): number of children younger than 7.
+        number_of_children_7_and_over (int): number of children aged 7 or older.
+
+    Returns:
+        dict: individual deduction components and "total_cantonal_optional_deductions".
+    '''
     
     # Load cantonal deduction table via loaders/load_datasets.py
     tax_deductions_cantonal = ld.load_tax_deductions(tax_level="cantonal")
