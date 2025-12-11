@@ -48,8 +48,38 @@ def compute_total_tax(
     commune,
     church_affiliation_norm,
 ):
-    """Computes total annual income tax for given user profile;
-    mirrors full backend tax logic used in the app.
+    """
+    Computes total annual income tax for given user profile.
+
+    This function reproduces the same backend tax calculation logic used inside
+    the Streamlit app. It applies:
+
+      - Mandatory deductions (AHV/IV/EO/ALV + minimal BVG)
+      - Federal optional deductions
+      - Cantonal optional deductions
+      - Federal and cantonal taxable income computation
+      - Federal, cantonal, municipal, and church tax calculation
+
+    Args:
+        income_gross (float): Annual gross income before deductions.
+        age (int): Age of the taxpayer (relevant for BVG contribution rate).
+        employed (bool): Whether taxpayer is employed or self-employed.
+        marital_status_norm (str): "single" or "married".
+        number_of_children (int): Total dependent children.
+        contribution_pillar_3a (float): Actual 3a contribution.
+        total_insurance_expenses (float): Insurance premiums & savings interest.
+        travel_expenses_main_income (float): Commuting/travel deduction.
+        child_care_expenses_third_party (float): Third-party childcare costs.
+        is_two_income_couple (bool): True if both spouses earn income.
+        taxable_assets (float): Cantonal taxable wealth/portfolio.
+        child_education_expenses (float): Annual education expenses.
+        number_of_children_under_7 (int): Children <7 years old.
+        number_of_children_7_and_over (int): Children ≥7 years old.
+        commune (str): Name of municipality for municipal multiplier lookup.
+        church_affiliation_norm (str or None): Normalized church affiliation.
+
+    Returns:
+        float: Total calculated income tax (CHF) for the given profile.
     """
 
     ### Mandatory deductions (Pillar 1 + minimal Pillar 2)
@@ -121,7 +151,19 @@ def compute_total_tax(
 ### Generate one random user profile 
 
 def random_profile(rng):
-    """Generate a random but realistic user profile for training data."""
+    """Generate a random but realistic user profile for dataset creation.
+
+    The generated profile simulates plausible taxpayer characteristics and 
+    deduction values. These synthetic profiles are used to estimate the 
+    effect of maximizing different deductions when training the ML models.
+
+    Args:
+        rng (np.random.Generator): Numpy random generator instance.
+
+    Returns:
+        dict: fully populated tax-relevant user profile containing income, 
+        demographics, deductions, household info, commune, and church affiliation.
+    """
 
     # Basic demographics
     income_gross = float(rng.integers(30_000, 250_000))
@@ -188,7 +230,26 @@ def random_profile(rng):
 ### Generate dataset for ML training
 
 def main(n_samples=4000, seed=42):
-    """Create dataset that estimates tax savings for Pillar 3a, childcare, insurance."""
+    """Generate the ML training dataset for tax-saving estimation models.
+
+    This function:
+      1. Creates 'n_samples' random user profiles.
+      2. Computes their baseline total income tax.
+      3. Computes three alternative scenarios where:
+            - Pillar 3a deduction is maxed
+            - Childcare deduction is maxed
+            - Insurance deduction is maxed
+      4. Calculates tax savings (delta values) for each scenario.
+      5. Stores all profiles and computed tax deltas in a single DataFrame.
+      6. Saves the final dataset to `data/deduction_savings_dataset.csv`.
+
+    Args:
+        n_samples (int): Number of synthetic training samples to generate.
+        seed (int): Random seed for reproducibility.
+
+    Returns:
+        None, as function only writes to disk  
+    """
 
     rng = np.random.default_rng(seed)
     rows = []
